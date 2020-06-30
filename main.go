@@ -39,16 +39,22 @@ func main() {
 			log.Printf("[%s u: %d c: %d] %s\n", update.CallbackQuery.From.UserName, update.CallbackQuery.From.ID, update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Data)
 
 			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID, "")
-			
+
 			switch update.CallbackQuery.Data {
+			case "main":
+				msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
+					"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
+				msg.ReplyMarkup = &mainMenu
 			case "uni":
-				msg.Text = "Ещё не готово"
-				msg.ReplyMarkup = &blank
+				msg.Text = "Введите один или несколько критериев для получения подборки университетов"
+				msg.ReplyMarkup = &unisCompilationMenu
 			case "fUni":
 				msg.Text = "Введите название университета"
 			case "comp":
-				msg.Text = "Ещё не готово"
-				msg.ReplyMarkup = &blank
+				msg.Text = "Вы можете добавить вузы и/или специальности для сравнения.\n" +
+					"Чтобы получить результат сравнения, нажмите *Сравнить*"
+				msg.ParseMode = "markdown"
+				msg.ReplyMarkup = &compareUnisMenu
 			case "rate":
 				msg.Text = "Выберите рейтинг"
 				msg.ReplyMarkup = &ratingMenu

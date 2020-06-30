@@ -28,18 +28,47 @@ import tgbotapi "github.com/Syfaro/telegram-bot-api"
 //	),
 //)
 
-var blank = tgbotapi.NewInlineKeyboardMarkup(
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Ещё не готово", "nil")),
-)
+var (
+	mainButton = tgbotapi.NewInlineKeyboardButtonData("<< Главное меню >>","main")
 
-var mainMenu = tgbotapi.NewInlineKeyboardMarkup(
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подбор ВУЗа","uni")),
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Найти ВУЗ","fUni")),
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сравнить ВУЗы","comp")),
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Рейтинг ВУЗов","rate")),
-)
+	blankMenu = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Ещё не готово", "nil")),
+		tgbotapi.NewInlineKeyboardRow(mainButton),
+	)
 
-var ratingMenu = tgbotapi.NewInlineKeyboardMarkup(
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Международный рейтинг QS","qs")),
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Российский рейтинг РАНХиГС","ranhigs")),
+	mainMenu = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подбор ВУЗа","uni")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Найти ВУЗ","fUni")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сравнить ВУЗы","comp")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Рейтинг ВУЗов","rate")),
+		tgbotapi.NewInlineKeyboardRow(mainButton),
+	)
+
+	ratingMenu = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Международный рейтинг QS","qs")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Российский рейтинг РАНХиГС","ranhigs")),
+		tgbotapi.NewInlineKeyboardRow(mainButton),
+	)
+
+	unisCompilationMenu = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Баллы ЕГЭ","ege")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Профиль","pro")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Специальность","spec")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Город","city")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Важно наличие военной кафедры","army")),
+		tgbotapi.NewInlineKeyboardRow(mainButton),
+	)
+
+	compareUnisMenu = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Добавить вуз или специальность","addSpecs")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Удалить вуз или специальность", "delSpecs")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сравнить","compare")),
+		tgbotapi.NewInlineKeyboardRow(mainButton),
+	)
+
+	uniMenu = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Специальности","specs")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подобрать специальность","findSpecs")),
+		tgbotapi.NewInlineKeyboardRow(mainButton),
+	)
 )
