@@ -13,3 +13,12 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# Ignore go-file with bot token
+constants.go
+
+# Ignore idea
+.idea/*
+
+# Ignore DS_Store os x file
+**/.DS_Store
