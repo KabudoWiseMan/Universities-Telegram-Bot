@@ -38,26 +38,23 @@ func main() {
 		if update.CallbackQuery != nil {
 			log.Printf("[%s u: %d c: %d] %s\n", update.CallbackQuery.From.UserName, update.CallbackQuery.From.ID, update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Data)
 
-			// maybe change data for pretty answer
-			callback := tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data)
-			msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "")
-
+			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID, "")
+			
 			switch update.CallbackQuery.Data {
 			case "uni":
 				msg.Text = "Ещё не готово"
-				msg.ReplyMarkup = blank
+				msg.ReplyMarkup = &blank
 			case "fUni":
-				msg.Text = "Ещё не готово"
-				msg.ReplyMarkup = blank
+				msg.Text = "Введите название университета"
 			case "comp":
 				msg.Text = "Ещё не готово"
-				msg.ReplyMarkup = blank
+				msg.ReplyMarkup = &blank
 			case "rate":
-				msg.Text = "Ещё не готово"
-				msg.ReplyMarkup = blank
+				msg.Text = "Выберите рейтинг"
+				msg.ReplyMarkup = &ratingMenu
 			}
 
-			bot.AnswerCallbackQuery(callback)
+			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Done"))
 			bot.Send(msg)
 		}
 

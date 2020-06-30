@@ -33,8 +33,13 @@ var blank = tgbotapi.NewInlineKeyboardMarkup(
 )
 
 var mainMenu = tgbotapi.NewInlineKeyboardMarkup(
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подбор вуза","uni")),
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Найти вуз","fUni")),
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сравнить вузы","comp")),
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Рейтинг вузов","rate")),
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подбор ВУЗа","uni")),
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Найти ВУЗ","fUni")),
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сравнить ВУЗы","comp")),
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Рейтинг ВУЗов","rate")),
+)
+
+var ratingMenu = tgbotapi.NewInlineKeyboardMarkup(
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Международный рейтинг QS","qs")),
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Российский рейтинг РАНХиГС","ranhigs")),
 )
