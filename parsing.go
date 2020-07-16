@@ -7,7 +7,17 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
+
+func worker(wg *sync.WaitGroup, id int) {
+	defer wg.Done()
+
+	log.Printf("Worker %v: Started\n", id)
+	time.Sleep(time.Second)
+	log.Printf("Worker %v: Finished\n", id)
+}
 
 func getChildren(node *html.Node) []*html.Node {
 	var children []*html.Node
@@ -40,23 +50,35 @@ func isDiv(node *html.Node, class string) bool {
 
 func parseUniversities() []*University {
 	log.Println("parsing universities")
+
+	var wg sync.WaitGroup
+
 	var unis []*University
 
 	page := "?page="
 
-	prevUnisLen := -1
+	//prevUnisLen := -1
+	//
+	//i := 1
+	//for len(unis) != prevUnisLen {
+	//	prevUnisLen = len(unis)
+	//	unis = append(unis, parsePage(UniversitiesSite + page + strconv.Itoa(i))...)
+	//	i++
+	//}
 
-	i := 1
-	for len(unis) != prevUnisLen {
-		prevUnisLen = len(unis)
-		unis = append(unis, parsePage(UniversitiesSite + page + strconv.Itoa(i))...)
-		i++
+	for i := 1; i < 50; i++ {
+		wg.Add(1)
+		go func(i int) { unis = append(unis, parsePage(&wg, UniversitiesSite+page+strconv.Itoa(i))...) }(i)
 	}
+
+	wg.Wait()
 
 	return unis
 }
 
-func parsePage(pageUrl string) []*University {
+func parsePage(wg *sync.WaitGroup, pageUrl string) []*University {
+	defer wg.Done()
+
 	log.Println("sending request to " + pageUrl)
 	if response, err := http.Get(pageUrl); err != nil {
 		log.Println("request to " + pageUrl + " failed", "error: ", err)
