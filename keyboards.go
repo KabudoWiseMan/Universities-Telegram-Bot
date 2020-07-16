@@ -30,8 +30,8 @@ import tgbotapi "github.com/Syfaro/telegram-bot-api"
 
 var (
 	mainButton = tgbotapi.NewInlineKeyboardButtonData("<< Главное меню >>","main")
-	qsButton = tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт QS","https://www.topuniversities.com/qs-world-university-rankings")
-	ranhigsButton = tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт рейтинга РАНХиГС","https://russiaedu.ru/rating")
+	qsButton = tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт QS", RatingQsSite)
+	ranhigsButton = tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт рейтинга РАНХиГС", RatingRanhigsSite)
 
 	blankMenu = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Ещё не готово", "nil")),

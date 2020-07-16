@@ -16,10 +16,10 @@ func isAdmin(chatID int64) bool {
 }
 
 func main() {
-	dbErr := connect();
-	if dbErr != nil {
-		log.Panic(dbErr)
-	}
+	//db, err := connect();
+	//if err != nil {
+	//	log.Panic(err)
+	//}
 
 	bot, err := tgbotapi.NewBotAPI(BotToken)
 	if err != nil {

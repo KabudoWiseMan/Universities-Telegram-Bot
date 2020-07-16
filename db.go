@@ -6,21 +6,21 @@ import (
 	"fmt"
 )
 
-func connect() error {
+func connect() (*sql.DB, error) {
 	dbInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", Host, Port, User, Password, DBname, SSLmode)
 
 	db, err := sql.Open("postgres", dbInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer db.Close()
+	//defer db.Close()
 
 	err = db.Ping()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	fmt.Println("Successfully connected!")
 
-	return nil
+	return db, nil
 }
