@@ -4,20 +4,12 @@ import (
 	"fmt"
 	"golang.org/x/net/html"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
-
-func worker(wg *sync.WaitGroup, id int) {
-	defer wg.Done()
-
-	log.Printf("Worker %v: Started\n", id)
-	time.Sleep(time.Second)
-	log.Printf("Worker %v: Finished\n", id)
-}
 
 func getChildren(node *html.Node) []*html.Node {
 	var children []*html.Node
@@ -48,27 +40,65 @@ func isDiv(node *html.Node, class string) bool {
 	return isElem(node, "div") && getAttr(node, "class") == class
 }
 
+func findUnisNum() int {
+	log.Println("finding number of universities")
+
+	if response, err := http.Get(UniversitiesSite); err != nil {
+		log.Println("request to " + UniversitiesSite + " failed", "error: ", err)
+	} else {
+		defer response.Body.Close()
+		status := response.StatusCode
+		log.Println("got response from " + UniversitiesSite, "status", status)
+		if status == http.StatusOK {
+			if doc, err := html.Parse(response.Body); err != nil {
+				log.Println("invalid HTML from " + UniversitiesSite, "error", err)
+			} else {
+				log.Println("HTML from " + UniversitiesSite + " parsed successfully")
+				return searchUnisNum(doc)
+			}
+		}
+	}
+
+	return -1
+}
+
+func searchUnisNum(node *html.Node) int {
+	if isDiv(node, "optParent") {
+		cs := getChildren(node)
+		unisNumString := cs[3].FirstChild.FirstChild.Data
+		unisNum, err := strconv.Atoi(unisNumString)
+		if err != nil {
+			log.Print("Unable to parse number of universities, got: " + unisNumString)
+			return -1
+		}
+
+		return unisNum
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if unisNum := searchUnisNum(c); unisNum != -1 {
+			return unisNum
+		}
+	}
+
+	return -1
+}
+
 func parseUniversities() []*University {
 	log.Println("parsing universities")
+
+	unisNum := findUnisNum()
+	unisPageNums := int(math.Ceil(float64(unisNum) / 15))
 
 	var wg sync.WaitGroup
 
 	var unis []*University
 
-	page := "?page="
+	pageString := "?page="
 
-	//prevUnisLen := -1
-	//
-	//i := 1
-	//for len(unis) != prevUnisLen {
-	//	prevUnisLen = len(unis)
-	//	unis = append(unis, parsePage(UniversitiesSite + page + strconv.Itoa(i))...)
-	//	i++
-	//}
-
-	for i := 1; i < 50; i++ {
+	for i := 1; i <= unisPageNums; i++ {
 		wg.Add(1)
-		go func(i int) { unis = append(unis, parsePage(&wg, UniversitiesSite+page+strconv.Itoa(i))...) }(i)
+		go func(i int) { unis = append(unis, parsePage(&wg, UniversitiesSite + pageString + strconv.Itoa(i))...) }(i)
 	}
 
 	wg.Wait()
@@ -128,6 +158,6 @@ func main() {
 	unis := parseUniversities()
 	fmt.Println(len(unis))
 	for _, uni := range unis {
-		fmt.Println(uni.Name)
+		fmt.Println(*uni)
 	}
 }
