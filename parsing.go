@@ -89,6 +89,7 @@ func parseUniversities() []*University {
 
 	unisNum := findUnisNum()
 	unisPageNums := int(math.Ceil(float64(unisNum) / 15))
+	pace := int(math.Ceil(float64(unisPageNums) / 10))
 
 	var wg sync.WaitGroup
 
@@ -96,12 +97,13 @@ func parseUniversities() []*University {
 
 	pageString := "?page="
 
-	for i := 1; i <= unisPageNums; i++ {
-		wg.Add(1)
-		go func(i int) { unis = append(unis, parsePage(&wg, UniversitiesSite + pageString + strconv.Itoa(i))...) }(i)
+	for i := 1; i <= unisPageNums; i += pace + 1 {
+		for j := i; j <= i + pace; j++ {
+			wg.Add(1)
+			go func(j int) { unis = append(unis, parsePage(&wg, UniversitiesSite + pageString + strconv.Itoa(j))...) }(j)
+		}
+		wg.Wait()
 	}
-
-	wg.Wait()
 
 	return unis
 }
@@ -133,16 +135,19 @@ func searchUniversities(node *html.Node) []*University {
 	universitiesMainUrl := UniversitiesSite[:20]
 
 	if isDiv(node, "sideContent") {
+		var wg sync.WaitGroup
 		var unis []*University
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
 			if isDiv(c, "col-md-12 itemVuz") || isDiv(c, "col-md-12 itemVuzPremium") {
 				if a := c.FirstChild.FirstChild.FirstChild; isElem(a, "a") {
 					uniSite := universitiesMainUrl + getAttr(a, "href")
-					uni := parseUniversity(uniSite)
-					unis = append(unis, uni)
+					wg.Add(1)
+					go func(uniSite string) { uni := parseUniversity(&wg, uniSite); unis = append(unis, uni) }(uniSite)
 				}
 			}
 		}
+
+		wg.Wait()
 
 		return unis
 	}
@@ -156,7 +161,9 @@ func searchUniversities(node *html.Node) []*University {
 	return nil
 }
 
-func parseUniversity(uniSite string) *University {
+func parseUniversity(wg *sync.WaitGroup, uniSite string) *University {
+	defer wg.Done()
+
 	log.Println("sending request to " + uniSite)
 	if response, err := http.Get(uniSite); err != nil {
 		log.Println("request to " + uniSite + " failed", "error: ", err)
@@ -169,7 +176,7 @@ func parseUniversity(uniSite string) *University {
 				log.Println("invalid HTML from " + uniSite, "error", err)
 			} else {
 				log.Println("HTML from " + uniSite + " parsed successfully")
-				return searchUniversity(doc)
+				return searchUniversity(doc, uniSite)
 			}
 		}
 	}
@@ -177,12 +184,17 @@ func parseUniversity(uniSite string) *University {
 	return nil
 }
 
-func searchUniversity(node *html.Node) *University {
+func searchUniversity(node *html.Node, uniSite string) *University {
 	if isDiv(node, "content clearfix") {
 		cs := getChildren(node)
+		universityId, err := strconv.Atoi(uniSite[25:])
+		if err != nil {
+			log.Println("couldn't get university id, got: " + uniSite[26:])
+		}
 		title, dormitary, militaryDep, description := searchUniInfo(cs[len(cs) - 2])
 		phone, adress, email, site := searchUniInfo2(cs[len(cs) - 1])
 		uni := &University{
+			UniversityId: universityId,
 			Name: title,
 			Description: description,
 			Site: site,
@@ -197,7 +209,7 @@ func searchUniversity(node *html.Node) *University {
 	}
 
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		if uni := searchUniversity(c); uni != nil {
+		if uni := searchUniversity(c, uniSite); uni != nil {
 			return uni
 		}
 	}
@@ -208,15 +220,24 @@ func searchUniversity(node *html.Node) *University {
 func searchUniInfo(node *html.Node) (string, bool, bool, string) {
 	if isDiv(node, "mainSlider-left") {
 		cs := getChildren(node)
+
 		title := strings.TrimSpace(cs[0].FirstChild.Data)
-		description := ""
-		descriptionContent := cs[6].FirstChild
-		if isText(descriptionContent) {
-			description = strings.TrimSpace(descriptionContent.Data)
-		}
 		optionsDivCs := getChildren(cs[1])
 		dormitary := optionsDivCs[1].FirstChild.Data == CheckMark
 		militaryDep := optionsDivCs[5].FirstChild.Data == CheckMark
+
+		description := ""
+		for _, css := range cs {
+			if isDiv(css, "midVuztext") {
+				description = takeUniDescription(css)
+				//descriptionContent := css.FirstChild
+				//if isText(descriptionContent) {
+				//	description = strings.TrimSpace(descriptionContent.Data)
+				//} else if isElem(descriptionContent, "p") {
+				//	description = strings.TrimSpace(descriptionContent.FirstChild.Data)
+				//}
+			}
+		}
 
 		return title, dormitary, militaryDep, description
 	}
@@ -228,6 +249,35 @@ func searchUniInfo(node *html.Node) (string, bool, bool, string) {
 	}
 
 	return "", false, false, ""
+}
+
+func takeUniDescription(node *html.Node) string {
+	description := ""
+
+	cs := getChildren(node)
+	for _, css := range cs {
+		if isText(css) {
+			description += strings.TrimSpace(css.Data) + "\n"
+		} else if isElem(css, "p") {
+			for c := css.FirstChild; c != nil; c = c.NextSibling {
+				if isText(c) {
+					description += strings.TrimSpace(c.Data) + "\n"
+				}
+			}
+		} else if isElem(css, "ul") {
+			listCs := getChildren(css)
+
+			for _, listCss := range listCs {
+				description += "— " + strings.TrimSpace(listCss.FirstChild.Data) + "\n"
+			}
+		}
+	}
+
+	if len(description) > 0 {
+		return description[:len(description) - 1]
+	}
+
+	return description
 }
 
 func searchUniInfo2(node *html.Node) (string, string, string, string) {
@@ -269,7 +319,10 @@ func main() {
 	log.Println("Downloader started")
 	unis := parseUniversities()
 	fmt.Println(len(unis))
-	for _, uni := range unis {
-		fmt.Println(*uni)
+	if len(unis) == 739 {
+		insertUnis(unis)
 	}
+	//for _, uni := range unis {
+	//	fmt.Println(uni.UniversityId)
+	//}
 }
