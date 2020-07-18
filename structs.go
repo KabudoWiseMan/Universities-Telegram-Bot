@@ -11,3 +11,15 @@ type University struct {
 	MilitaryDep bool
 	Dormitary bool
 }
+
+type Profile struct {
+	ProfileId int
+	Name string
+}
+
+type Speciality struct {
+	SpecialityId int
+	Name string
+	Bachelor bool
+	ProfileId int
+}

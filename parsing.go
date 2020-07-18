@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	//"fmt"
 	"golang.org/x/net/html"
+	"golang.org/x/text/encoding/charmap"
 	"log"
 	"math"
 	"net/http"
@@ -315,6 +317,127 @@ func searchUniInfo2(node *html.Node) (string, string, string, string) {
 	return "", "", "", ""
 }
 
+func parseProfsNSpecs(specSite string) ([]*Profile, []*Speciality) {
+	log.Println("sending request to " + specSite)
+	if response, err := http.Get(specSite); err != nil {
+		log.Println("request to " + specSite + " failed", "error: ", err)
+	} else {
+		defer response.Body.Close()
+		status := response.StatusCode
+		log.Println("got response from " + specSite, "status", status)
+		if status == http.StatusOK {
+			if doc, err := html.Parse(response.Body); err != nil {
+				log.Println("invalid HTML from " + specSite, "error", err)
+			} else {
+				log.Println("HTML from " + specSite + " parsed successfully")
+				return searchProfsNSpecs(doc)
+			}
+		}
+	}
+
+	return nil, nil
+}
+
+func searchProfsNSpecs(node *html.Node) ([]*Profile, []*Speciality) {
+	if isElem(node, "table") {
+		tBody := node.LastChild
+		cs := getChildren(tBody)[1:]
+
+		var profs []*Profile
+		var specs []*Speciality
+
+		for _, elem := range cs {
+			if !isElem(elem, "tr") {
+				continue
+			}
+
+			code := ""
+			name := ""
+			isSpec := false
+
+			elemData := getChildren(elem)
+			for _, elemDataCs := range elemData {
+				if !isElem(elemDataCs, "td") {
+					continue
+				}
+
+				elemDataCss := getChildren(elemDataCs)
+				for _, elemDataCsss := range elemDataCss {
+					if !isElem(elemDataCsss, "p") {
+						continue
+					}
+
+					if getAttr(elemDataCsss, "class") == "s_1" {
+						lc := elemDataCsss.FirstChild
+						if isElem(lc, "a") {
+							code = lc.FirstChild.Data
+						} else {
+							code = lc.Data
+						}
+					}
+
+					if getAttr(elemDataCsss, "class") == "s_16" {
+						if name != "" {
+							isSpec = true
+						} else {
+							d := charmap.Windows1251.NewDecoder()
+							st, err := d.String(elemDataCsss.LastChild.Data)
+							if err != nil {
+								panic(err)
+							}
+							name = st
+						}
+					}
+				}
+			}
+
+			if code != "" {
+				profileNum, err := strconv.Atoi(code[0:2])
+				if err != nil {
+					log.Println("Couldn't convert profile ID, got: " + code[0:2])
+				}
+
+				isBachelorIdent, err := strconv.Atoi(code[3:5])
+				if err != nil {
+					log.Println("Couldn't convert isBachelor, got: " + code[6:])
+				}
+				isBachelor := isBachelorIdent == 3
+
+				specialityId, err := strconv.Atoi(strings.ReplaceAll(code, ".", ""))
+				if err != nil {
+					log.Println("Couldn't convert speciality ID, got: " + code[6:])
+				}
+
+				if isSpec {
+					spec := &Speciality{
+						SpecialityId: specialityId,
+						Name:         name,
+						Bachelor:     isBachelor,
+						ProfileId:    profileNum * 10000,
+					}
+					specs = append(specs, spec)
+				} else {
+					prof := &Profile{
+						ProfileId: profileNum * 10000,
+						Name:      name,
+					}
+					profs = append(profs, prof)
+				}
+			}
+		}
+
+		return profs, specs
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if profs, specs := searchProfsNSpecs(c); profs != nil {
+			return profs, specs
+		}
+	}
+
+	return nil, nil
+}
+
 func main() {
 	log.Println("Downloader started")
 	unis := parseUniversities()
@@ -322,7 +445,47 @@ func main() {
 	if len(unis) == 739 {
 		insertUnis(unis)
 	}
-	//for _, uni := range unis {
-	//	fmt.Println(uni.UniversityId)
+	for _, uni := range unis {
+		fmt.Println(uni.UniversityId)
+	}
+
+	// READ WHOLE PAGE
+	//url := BachelorSpecialitiesSite
+	//fmt.Printf("HTML code of %s ...\n", url)
+	//resp, err := http.Get(url)
+	//// handle the error if there is one
+	//if err != nil {
+	//	panic(err)
 	//}
+	//// do this now so it won't be forgotten
+	//defer resp.Body.Close()
+	//// reads html as a slice of bytes
+	//html, err := ioutil.ReadAll(resp.Body)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//f, err := os.Create("/Users/vsevolodmolchanov/Downloads/specs.html")
+	//if err != nil {
+	//	panic(err)
+	//}
+	//defer f.Close()
+	//
+	//_, err = f.Write(html)
+	//if err != nil {
+	//	panic(err)
+	//}
+
+	profsBach, specsBach := parseProfsNSpecs(BachelorSpecialitiesSite)
+	profsSpec, specsSpec := parseProfsNSpecs(SpecialistSpecialitiesSite)
+
+	profs := make(map[Profile]bool)
+	for _, p := range profsBach {
+		profs[*p] = true
+	}
+	for _, p := range profsSpec {
+		profs[*p] = true
+	}
+
+	insertProfsNSpecs(profs, specsBach, specsSpec)
 }
