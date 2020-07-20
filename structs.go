@@ -1,5 +1,17 @@
 package main
 
+type Profile struct {
+	ProfileId int
+	Name string
+}
+
+type Speciality struct {
+	SpecialityId int
+	Name string
+	Bachelor bool
+	ProfileId int
+}
+
 type University struct {
 	UniversityId int
 	Name string
@@ -12,14 +24,13 @@ type University struct {
 	Dormitary bool
 }
 
-type Profile struct {
-	ProfileId int
+type Faculty struct {
+	FacultyId int
 	Name string
-}
-
-type Speciality struct {
-	SpecialityId int
-	Name string
-	Bachelor bool
-	ProfileId int
+	Description string
+	Site string
+	Email string
+	Adress string
+	Phone string
+	UniversityId int
 }

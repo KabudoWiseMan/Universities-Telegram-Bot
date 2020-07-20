@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	//"fmt"
 	"golang.org/x/net/html"
 	"golang.org/x/text/encoding/charmap"
 	"log"
@@ -40,6 +38,127 @@ func isElem(node *html.Node, tag string) bool {
 
 func isDiv(node *html.Node, class string) bool {
 	return isElem(node, "div") && getAttr(node, "class") == class
+}
+
+func parseProfsNSpecs(specSite string) ([]*Profile, []*Speciality) {
+	log.Println("sending request to " + specSite)
+	if response, err := http.Get(specSite); err != nil {
+		log.Println("request to " + specSite + " failed", "error: ", err)
+	} else {
+		defer response.Body.Close()
+		status := response.StatusCode
+		log.Println("got response from " + specSite, "status", status)
+		if status == http.StatusOK {
+			if doc, err := html.Parse(response.Body); err != nil {
+				log.Println("invalid HTML from " + specSite, "error", err)
+			} else {
+				log.Println("HTML from " + specSite + " parsed successfully")
+				return searchProfsNSpecs(doc)
+			}
+		}
+	}
+
+	return nil, nil
+}
+
+func searchProfsNSpecs(node *html.Node) ([]*Profile, []*Speciality) {
+	if isElem(node, "table") {
+		tBody := node.LastChild
+		cs := getChildren(tBody)[1:]
+
+		var profs []*Profile
+		var specs []*Speciality
+
+		for _, elem := range cs {
+			if !isElem(elem, "tr") {
+				continue
+			}
+
+			code := ""
+			name := ""
+			isSpec := false
+
+			elemData := getChildren(elem)
+			for _, elemDataCs := range elemData {
+				if !isElem(elemDataCs, "td") {
+					continue
+				}
+
+				elemDataCss := getChildren(elemDataCs)
+				for _, elemDataCsss := range elemDataCss {
+					if !isElem(elemDataCsss, "p") {
+						continue
+					}
+
+					if getAttr(elemDataCsss, "class") == "s_1" {
+						lc := elemDataCsss.FirstChild
+						if isElem(lc, "a") {
+							code = lc.FirstChild.Data
+						} else {
+							code = lc.Data
+						}
+					}
+
+					if getAttr(elemDataCsss, "class") == "s_16" {
+						if name != "" {
+							isSpec = true
+						} else {
+							d := charmap.Windows1251.NewDecoder()
+							st, err := d.String(elemDataCsss.LastChild.Data)
+							if err != nil {
+								panic(err)
+							}
+							name = st
+						}
+					}
+				}
+			}
+
+			if code != "" {
+				profileNum, err := strconv.Atoi(code[0:2])
+				if err != nil {
+					log.Println("Couldn't convert profile ID, got: " + code[0:2])
+				}
+
+				isBachelorIdent, err := strconv.Atoi(code[3:5])
+				if err != nil {
+					log.Println("Couldn't convert isBachelor, got: " + code[6:])
+				}
+				isBachelor := isBachelorIdent == 3
+
+				specialityId, err := strconv.Atoi(strings.ReplaceAll(code, ".", ""))
+				if err != nil {
+					log.Println("Couldn't convert speciality ID, got: " + code[6:])
+				}
+
+				if isSpec {
+					spec := &Speciality{
+						SpecialityId: specialityId,
+						Name:         name,
+						Bachelor:     isBachelor,
+						ProfileId:    profileNum * 10000,
+					}
+					specs = append(specs, spec)
+				} else {
+					prof := &Profile{
+						ProfileId: profileNum * 10000,
+						Name:      name,
+					}
+					profs = append(profs, prof)
+				}
+			}
+		}
+
+		return profs, specs
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if profs, specs := searchProfsNSpecs(c); profs != nil {
+			return profs, specs
+		}
+	}
+
+	return nil, nil
 }
 
 func findUnisNum() int {
@@ -194,7 +313,7 @@ func searchUniversity(node *html.Node, uniSite string) *University {
 			log.Println("couldn't get university id, got: " + uniSite[26:])
 		}
 		title, dormitary, militaryDep, description := searchUniInfo(cs[len(cs) - 2])
-		phone, adress, email, site := searchUniInfo2(cs[len(cs) - 1])
+		phone, adress, email, site, _ := searchUniInfo2(cs[len(cs) - 1])
 		uni := &University{
 			UniversityId: universityId,
 			Name: title,
@@ -232,12 +351,6 @@ func searchUniInfo(node *html.Node) (string, bool, bool, string) {
 		for _, css := range cs {
 			if isDiv(css, "midVuztext") {
 				description = takeUniDescription(css)
-				//descriptionContent := css.FirstChild
-				//if isText(descriptionContent) {
-				//	description = strings.TrimSpace(descriptionContent.Data)
-				//} else if isElem(descriptionContent, "p") {
-				//	description = strings.TrimSpace(descriptionContent.FirstChild.Data)
-				//}
 			}
 		}
 
@@ -282,7 +395,7 @@ func takeUniDescription(node *html.Node) string {
 	return description
 }
 
-func searchUniInfo2(node *html.Node) (string, string, string, string) {
+func searchUniInfo2(node *html.Node) (string, string, string, string, bool) {
 	if isDiv(node, "col-lg-6 col-md-6 col-xs-12 col-sm-6") {
 		cs := getChildren(node)
 
@@ -305,187 +418,191 @@ func searchUniInfo2(node *html.Node) (string, string, string, string) {
 			site = siteContent.Data
 		}
 
-		return phone, adress, email, site
+		return phone, adress, email, site, true
 	}
 
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		if phone, addr, email, site := searchUniInfo2(c); phone != "" {
-			return phone, addr, email, site
+		if phone, addr, email, site, ret := searchUniInfo2(c); ret {
+			return phone, addr, email, site, ret
 		}
 	}
 
-	return "", "", "", ""
+	return "", "", "", "", false
 }
 
-func parseProfsNSpecs(specSite string) ([]*Profile, []*Speciality) {
-	log.Println("sending request to " + specSite)
-	if response, err := http.Get(specSite); err != nil {
-		log.Println("request to " + specSite + " failed", "error: ", err)
+func parseFaculties(unis []*University) []*Faculty {
+	var wg sync.WaitGroup
+
+	var facs []*Faculty
+
+	facsString := "podrazdeleniya"
+
+	if len(unis) == 0 {
+		unis = getUnisIdsFromDb()
+	}
+
+	unisNum := len(unis)
+	pace := 15
+
+	for i := 0; i < unisNum; i += pace + 1 {
+		for j := i; j <= i + pace; j++ {
+			if j >= unisNum {
+				break
+			}
+			uniId := unis[j].UniversityId
+			uniIdString := strconv.Itoa(uniId)
+			wg.Add(1)
+			go func() { facs = append(facs, parseFacultyPage(&wg, UniversitiesSite + uniIdString + "/" + facsString, uniId)...) }()
+		}
+		wg.Wait()
+	}
+
+	return facs
+}
+
+func parseFacultyPage(wg *sync.WaitGroup, facPageSite string, uniId int) []*Faculty {
+	defer wg.Done()
+
+	log.Println("sending request to " + facPageSite)
+	if response, err := http.Get(facPageSite); err != nil {
+		log.Println("request to " + facPageSite + " failed", "error: ", err)
 	} else {
 		defer response.Body.Close()
 		status := response.StatusCode
-		log.Println("got response from " + specSite, "status", status)
+		log.Println("got response from " + facPageSite, "status", status)
 		if status == http.StatusOK {
 			if doc, err := html.Parse(response.Body); err != nil {
-				log.Println("invalid HTML from " + specSite, "error", err)
+				log.Println("invalid HTML from " + facPageSite, "error", err)
 			} else {
-				log.Println("HTML from " + specSite + " parsed successfully")
-				return searchProfsNSpecs(doc)
+				log.Println("HTML from " + facPageSite + " parsed successfully")
+				return searchFaculties(doc, uniId)
 			}
 		}
 	}
 
-	return nil, nil
+	return nil
 }
 
-func searchProfsNSpecs(node *html.Node) ([]*Profile, []*Speciality) {
-	if isElem(node, "table") {
-		tBody := node.LastChild
-		cs := getChildren(tBody)[1:]
+func searchFaculties(node *html.Node, uniId int) []*Faculty {
+	universitiesMainUrl := UniversitiesSite[:20]
 
-		var profs []*Profile
-		var specs []*Speciality
-
-		for _, elem := range cs {
-			if !isElem(elem, "tr") {
-				continue
-			}
-
-			code := ""
-			name := ""
-			isSpec := false
-
-			elemData := getChildren(elem)
-			for _, elemDataCs := range elemData {
-				if !isElem(elemDataCs, "td") {
-					continue
-				}
-
-				elemDataCss := getChildren(elemDataCs)
-				for _, elemDataCsss := range elemDataCss {
-					if !isElem(elemDataCsss, "p") {
-						continue
-					}
-
-					if getAttr(elemDataCsss, "class") == "s_1" {
-						lc := elemDataCsss.FirstChild
-						if isElem(lc, "a") {
-							code = lc.FirstChild.Data
-						} else {
-							code = lc.Data
-						}
-					}
-
-					if getAttr(elemDataCsss, "class") == "s_16" {
-						if name != "" {
-							isSpec = true
-						} else {
-							d := charmap.Windows1251.NewDecoder()
-							st, err := d.String(elemDataCsss.LastChild.Data)
-							if err != nil {
-								panic(err)
-							}
-							name = st
-						}
-					}
-				}
-			}
-
-			if code != "" {
-				profileNum, err := strconv.Atoi(code[0:2])
-				if err != nil {
-					log.Println("Couldn't convert profile ID, got: " + code[0:2])
-				}
-
-				isBachelorIdent, err := strconv.Atoi(code[3:5])
-				if err != nil {
-					log.Println("Couldn't convert isBachelor, got: " + code[6:])
-				}
-				isBachelor := isBachelorIdent == 3
-
-				specialityId, err := strconv.Atoi(strings.ReplaceAll(code, ".", ""))
-				if err != nil {
-					log.Println("Couldn't convert speciality ID, got: " + code[6:])
-				}
-
-				if isSpec {
-					spec := &Speciality{
-						SpecialityId: specialityId,
-						Name:         name,
-						Bachelor:     isBachelor,
-						ProfileId:    profileNum * 10000,
-					}
-					specs = append(specs, spec)
-				} else {
-					prof := &Profile{
-						ProfileId: profileNum * 10000,
-						Name:      name,
-					}
-					profs = append(profs, prof)
+	if isDiv(node, "tab-pane active") && getAttr(node, "id") == "fak" {
+		var wg sync.WaitGroup
+		var facs []*Faculty
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			if isDiv(c, "col-md-12 itemVuz") {
+				if a := c.FirstChild.FirstChild.FirstChild; isElem(a, "a") {
+					facSite := universitiesMainUrl + getAttr(a, "href")
+					wg.Add(1)
+					go func(facSite string) { fac := parseFaculty(&wg, facSite, uniId); facs = append(facs, fac) }(facSite)
 				}
 			}
 		}
 
-		return profs, specs
+		wg.Wait()
+
+		return facs
 	}
 
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		if profs, specs := searchProfsNSpecs(c); profs != nil {
-			return profs, specs
+		if facs := searchFaculties(c, uniId); facs != nil {
+			return facs
 		}
 	}
 
-	return nil, nil
+	return nil
+}
+
+func parseFaculty(wg *sync.WaitGroup, facSite string, uniId int) *Faculty {
+	defer wg.Done()
+
+	log.Println("sending request to " + facSite)
+	if response, err := http.Get(facSite); err != nil {
+		log.Println("request to " + facSite + " failed", "error: ", err)
+	} else {
+		defer response.Body.Close()
+		status := response.StatusCode
+		log.Println("got response from " + facSite, "status", status)
+		if status == http.StatusOK {
+			if doc, err := html.Parse(response.Body); err != nil {
+				log.Println("invalid HTML from " + facSite, "error", err)
+			} else {
+				log.Println("HTML from " + facSite + " parsed successfully")
+				return searchFaculty(doc, facSite, uniId)
+			}
+		}
+	}
+
+	return nil
+}
+
+func searchFaculty(node *html.Node, facSite string, uniId int) *Faculty {
+	if isDiv(node, "content clearfix") {
+		cs := getChildren(node)
+		facultyId, err := strconv.Atoi(facSite[25:])
+		if err != nil {
+			log.Println("couldn't get university id, got: " + facSite[26:])
+		}
+		title, _, _, description := searchUniInfo(cs[len(cs) - 2])
+		phone, adress, email, site, _ := searchUniInfo2(cs[len(cs) - 1])
+		fac := &Faculty{
+			FacultyId: facultyId,
+			Name: title,
+			Description: description,
+			Site: site,
+			Email: email,
+			Adress: adress,
+			Phone: phone,
+			UniversityId: uniId,
+		}
+
+		return fac
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if fac := searchFaculty(c, facSite, uniId); fac != nil {
+			return fac
+		}
+	}
+
+	return nil
 }
 
 func main() {
+	// Pfors and Specs
+	//profsBach, specsBach := parseProfsNSpecs(BachelorSpecialitiesSite)
+	//profsSpec, specsSpec := parseProfsNSpecs(SpecialistSpecialitiesSite)
+	//
+	//profs := make(map[Profile]bool)
+	//for _, p := range profsBach {
+	//	profs[*p] = true
+	//}
+	//for _, p := range profsSpec {
+	//	profs[*p] = true
+	//}
+	//
+	//insertProfsNSpecs(profs, specsBach, specsSpec)
+	
+	// Universities
+	//log.Println("Downloader started")
+	//unis := parseUniversities()
+	//fmt.Println(len(unis))
+	//if len(unis) != 0 {
+	//	insertUnis(unis)
+	//}
+	//for _, uni := range unis {
+	//	fmt.Println(uni.UniversityId)
+	//}
+	
+	// Faculties
 	log.Println("Downloader started")
-	unis := parseUniversities()
-	fmt.Println(len(unis))
-	if len(unis) == 739 {
-		insertUnis(unis)
-	}
-	for _, uni := range unis {
-		fmt.Println(uni.UniversityId)
+	var unis []*University // needs to be deleted
+	facs := parseFaculties(unis)
+	if len(facs) != 0 {
+		insertFacs(facs)
 	}
 
-	// READ WHOLE PAGE
-	//url := BachelorSpecialitiesSite
-	//fmt.Printf("HTML code of %s ...\n", url)
-	//resp, err := http.Get(url)
-	//// handle the error if there is one
-	//if err != nil {
-	//	panic(err)
+	//for _, fac := range facs {
+	//	fmt.Println(*fac)
 	//}
-	//// do this now so it won't be forgotten
-	//defer resp.Body.Close()
-	//// reads html as a slice of bytes
-	//html, err := ioutil.ReadAll(resp.Body)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//f, err := os.Create("/Users/vsevolodmolchanov/Downloads/specs.html")
-	//if err != nil {
-	//	panic(err)
-	//}
-	//defer f.Close()
-	//
-	//_, err = f.Write(html)
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	profsBach, specsBach := parseProfsNSpecs(BachelorSpecialitiesSite)
-	profsSpec, specsSpec := parseProfsNSpecs(SpecialistSpecialitiesSite)
-
-	profs := make(map[Profile]bool)
-	for _, p := range profsBach {
-		profs[*p] = true
-	}
-	for _, p := range profsSpec {
-		profs[*p] = true
-	}
-
-	insertProfsNSpecs(profs, specsBach, specsSpec)
 }
