@@ -1,5 +1,7 @@
 package main
 
+import uuid "github.com/satori/go.uuid"
+
 type Profile struct {
 	ProfileId int
 	Name string
@@ -34,3 +36,34 @@ type Faculty struct {
 	Phone string
 	UniversityId int
 }
+
+type Program struct {
+	ProgramId uuid.UUID
+	ProgramNum int
+	Name string
+	Description string
+	FreePlaces int
+	PaidPlaces int
+	Fee float64
+	FreePassPoints int
+	PaidPassPoints int
+	StudyForm string
+	StudyLanguage string
+	StudyBase string
+	StudyYears string
+	FacultyId int
+	SpecialityId int
+}
+
+type MinEgePoints struct {
+	ProgramId uuid.UUID
+	SubjectId int
+	MinPoints int
+}
+
+type EntranceTest struct {
+	ProgramId uuid.UUID
+	TestName string
+	MinPoints int
+}
+

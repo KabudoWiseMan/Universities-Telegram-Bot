@@ -1,6 +1,7 @@
 package main
 
 import (
+	uuid "github.com/satori/go.uuid"
 	"golang.org/x/net/html"
 	"golang.org/x/text/encoding/charmap"
 	"log"
@@ -93,9 +94,9 @@ func searchProfsNSpecs(node *html.Node) ([]*Profile, []*Speciality) {
 					if getAttr(elemDataCsss, "class") == "s_1" {
 						lc := elemDataCsss.FirstChild
 						if isElem(lc, "a") {
-							code = lc.FirstChild.Data
+							code = strings.TrimSpace(lc.FirstChild.Data)
 						} else {
-							code = lc.Data
+							code = strings.TrimSpace(lc.Data)
 						}
 					}
 
@@ -127,8 +128,12 @@ func searchProfsNSpecs(node *html.Node) ([]*Profile, []*Speciality) {
 				isBachelor := isBachelorIdent == 3
 
 				specialityId, err := strconv.Atoi(strings.ReplaceAll(code, ".", ""))
+				if specialityId == 0 {
+					log.Println("SHIT! " + strings.ReplaceAll(code, ".", ""))
+				}
 				if err != nil {
-					log.Println("Couldn't convert speciality ID, got: " + code[6:])
+					log.Println("Couldn't convert speciality ID, got: " + code)
+					log.Println(err)
 				}
 
 				if isSpec {
@@ -350,7 +355,7 @@ func searchUniInfo(node *html.Node) (string, bool, bool, string) {
 		description := ""
 		for _, css := range cs {
 			if isDiv(css, "midVuztext") {
-				description = takeUniDescription(css)
+				description = takeDescription(getChildren(css))
 			}
 		}
 
@@ -366,34 +371,51 @@ func searchUniInfo(node *html.Node) (string, bool, bool, string) {
 	return "", false, false, ""
 }
 
-func takeUniDescription(node *html.Node) string {
-	description := ""
-
-	cs := getChildren(node)
-	for _, css := range cs {
-		if isText(css) {
-			description += strings.TrimSpace(css.Data) + "\n"
-		} else if isElem(css, "p") {
-			for c := css.FirstChild; c != nil; c = c.NextSibling {
-				if isText(c) {
-					description += strings.TrimSpace(c.Data) + "\n"
-				}
-			}
-		} else if isElem(css, "ul") {
-			listCs := getChildren(css)
-
-			for _, listCss := range listCs {
-				description += "— " + strings.TrimSpace(listCss.FirstChild.Data) + "\n"
-			}
+func takeDescription(nodes []*html.Node) string {
+	if len(nodes) == 0 {
+		return ""
+	} else if len(nodes) == 1 {
+		node := nodes[0]
+		if isText(node) {
+			return node.Data + "\n"
+		} else if isElem(node, "li") {
+			return "— " + takeDescription(getChildren(node))
+		} else {
+			return takeDescription(getChildren(node))
 		}
+	} else {
+		return takeDescription(nodes[0:1]) + takeDescription(nodes[1:])
 	}
-
-	if len(description) > 0 {
-		return description[:len(description) - 1]
-	}
-
-	return description
 }
+
+//func takeUniDescription(node *html.Node) string {
+//	description := ""
+//
+//	cs := getChildren(node)
+//	for _, css := range cs {
+//		if isText(css) {
+//			description += strings.TrimSpace(css.Data) + "\n"
+//		} else if isElem(css, "p") {
+//			for c := css.FirstChild; c != nil; c = c.NextSibling {
+//				if isText(c) {
+//					description += strings.TrimSpace(c.Data) + "\n"
+//				}
+//			}
+//		} else if isElem(css, "ul") {
+//			listCs := getChildren(css)
+//
+//			for _, listCss := range listCs {
+//				description += "— " + strings.TrimSpace(listCss.FirstChild.Data) + "\n"
+//			}
+//		}
+//	}
+//
+//	if len(description) > 0 {
+//		return description[:len(description) - 1]
+//	}
+//
+//	return description
+//}
 
 func searchUniInfo2(node *html.Node) (string, string, string, string, bool) {
 	if isDiv(node, "col-lg-6 col-md-6 col-xs-12 col-sm-6") {
@@ -568,21 +590,603 @@ func searchFaculty(node *html.Node, facSite string, uniId int) *Faculty {
 	return nil
 }
 
+//func parseStudyForms() map[string]int {
+//	universitiesMainUrl := UniversitiesSite[:20]
+//
+//	log.Println("sending request to " + universitiesMainUrl)
+//	if response, err := http.Get(universitiesMainUrl); err != nil {
+//		log.Println("request to " + universitiesMainUrl + " failed", "error: ", err)
+//	} else {
+//		defer response.Body.Close()
+//		status := response.StatusCode
+//		log.Println("got response from " + universitiesMainUrl, "status", status)
+//		if status == http.StatusOK {
+//			if doc, err := html.Parse(response.Body); err != nil {
+//				log.Println("invalid HTML from " + universitiesMainUrl, "error", err)
+//			} else {
+//				log.Println("HTML from " + universitiesMainUrl + " parsed successfully")
+//				return searchStudyForms(doc)
+//			}
+//		}
+//	}
+//
+//	return nil
+//}
+//
+//func searchStudyForms(node *html.Node) map[string]int {
+//	if isDiv(node, "panel-group") && getAttr(node, "id") == "acc" {
+//		studyForms := make(map[string]int)
+//
+//		for c := node.FirstChild; c != nil; c = c.NextSibling {
+//			if isDiv(c, "panel panel-default") {
+//				first := c.FirstChild
+//				if getAttr(first, "id") == "uslll" {
+//					uslDiv := first.FirstChild
+//					for uc := uslDiv.FirstChild; uc != nil; uc = uc.NextSibling {
+//						if isElem(uc, "br") {
+//							break
+//						}
+//
+//						if isElem(uc, "label") {
+//							studyForm := strings.TrimSpace(uc.LastChild.Data)
+//							studyForms[studyForm] = len(studyForms) + 1
+//						}
+//					}
+//				}
+//			}
+//		}
+//
+//		return studyForms
+//	}
+//
+//	for c := node.FirstChild; c != nil; c = c.NextSibling {
+//		if studyForms := searchStudyForms(c); studyForms != nil {
+//			return studyForms
+//		}
+//	}
+//
+//	return nil
+//}
+
+func parseSubjs() map[string]int {
+	subjsUrl := UniversitiesSite[:20] + "/kakie-ege-nuzhno-sdavat"
+
+	log.Println("sending request to " + subjsUrl)
+	if response, err := http.Get(subjsUrl); err != nil {
+		log.Println("request to " + subjsUrl + " failed", "error: ", err)
+	} else {
+		defer response.Body.Close()
+		status := response.StatusCode
+		log.Println("got response from " + subjsUrl, "status", status)
+		if status == http.StatusOK {
+			if doc, err := html.Parse(response.Body); err != nil {
+				log.Println("invalid HTML from " + subjsUrl, "error", err)
+			} else {
+				log.Println("HTML from " + subjsUrl + " parsed successfully")
+				return searchSubjs(doc)
+			}
+		}
+	}
+
+	return nil
+}
+
+func searchSubjs(node *html.Node) map[string]int {
+	if isDiv(node, "col-md-12 teloSpecFilter") {
+		subjs := make(map[string]int)
+
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			if isElem(c, "label") {
+				name := getAttr(c, "title")
+				if name == "Вступительные" {
+					continue
+				}
+				_, ok := subjs[name]
+				if !ok {
+					subjs[name] = len(subjs) + 1
+				}
+			}
+		}
+
+		return subjs
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if subjs := searchSubjs(c); subjs != nil {
+			return subjs
+		}
+	}
+
+	return nil
+}
+
+func parsePrograms(facs []*Faculty, specs []*Speciality, subjs map[string]int) ([]*Program, []*MinEgePoints, []*EntranceTest) {
+	var wg sync.WaitGroup
+
+	var progs []*Program
+	var minPoints []*MinEgePoints
+	var entrTests []*EntranceTest
+
+	if len(facs) == 0 {
+		facs = getFacsIdsFromDb()
+	}
+	if len(specs) == 0 {
+		specs = getSpecsIdsFromDb()
+	}
+	if len(subjs) == 0 {
+		subjs = getSubjsFromDb()
+	}
+
+	specsIds := make(map[int]bool)
+	for _, spec := range specs {
+		specsIds[spec.SpecialityId] = true
+	}
+
+	facsNum := len(facs)
+	pace := 10
+
+	for i := 2700; i < facsNum; i += pace + 1 {
+		for j := i; j <= i + pace; j++ {
+			if j >= facsNum {
+				break
+			}
+			facId := facs[j].FacultyId
+			facIdString := strconv.Itoa(facId)
+			wg.Add(1)
+			go func() {
+				prog, minPoint, entrTest := parseProgramPages(&wg, UniversitiesSite + facIdString, facId, specsIds, subjs)
+				progs = append(progs, prog...)
+				minPoints = append(minPoints, minPoint...)
+				entrTests = append(entrTests, entrTest...)
+			}()
+		}
+		wg.Wait()
+	}
+
+	return progs, minPoints, entrTests
+}
+
+func findProgsNum(uniProgsSite string) int {
+	log.Println("finding number of programs")
+
+	if response, err := http.Get(uniProgsSite); err != nil {
+		log.Println("request to " + uniProgsSite + " failed", "error: ", err)
+	} else {
+		defer response.Body.Close()
+		status := response.StatusCode
+		log.Println("got response from " + uniProgsSite, "status", status)
+		if status == http.StatusOK {
+			if doc, err := html.Parse(response.Body); err != nil {
+				log.Println("invalid HTML from " + uniProgsSite, "error", err)
+			} else {
+				log.Println("HTML from " + uniProgsSite + " parsed successfully")
+				return searchProgsNum(doc)
+			}
+		}
+	}
+
+	return -1
+}
+
+func searchProgsNum(node *html.Node) int {
+	if isDiv(node, "dropdown") {
+		a := node.FirstChild
+		if isElem(a, "a") && getAttr(a, "id") == "dropdownMenuLink" {
+			progsNumString := a.FirstChild.LastChild.FirstChild.Data
+			progsNum, err := strconv.Atoi(progsNumString)
+			if err != nil {
+				log.Print("Unable to parse number of universities, got: " + progsNumString)
+				return -1
+			}
+
+			return progsNum
+		}
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if progsNum := searchProgsNum(c); progsNum != -1 {
+			return progsNum
+		}
+	}
+
+	return -1
+}
+
+func parseProgramPages(wg *sync.WaitGroup, uniSite string, facId int, specsIds map[int]bool, subjs map[string]int) ([]*Program, []*MinEgePoints, []*EntranceTest) {
+	defer wg.Done()
+
+	progsNum := findProgsNum(uniSite)
+
+	unisPageNums := int(math.Ceil(float64(progsNum) / 10))
+
+	var wg2 sync.WaitGroup
+
+	var progs []*Program
+	var minPoints []*MinEgePoints
+	var entrTests []*EntranceTest
+
+	pageString := "programs/bakispec?page="
+
+	for i := 1; i <= unisPageNums; i ++ {
+		wg2.Add(1)
+		go func(i int) {
+			prog, minPoint, entrTest := parseProgramPage(&wg2, uniSite + "/" + pageString + strconv.Itoa(i), facId, specsIds, subjs)
+			progs = append(progs, prog...)
+			minPoints = append(minPoints, minPoint...)
+			entrTests = append(entrTests, entrTest...)
+		}(i)
+	}
+	wg2.Wait()
+
+	return progs, minPoints, entrTests
+}
+
+func parseProgramPage(wg *sync.WaitGroup, progPageSite string, facId int, specsIds map[int]bool, subjs map[string]int) ([]*Program, []*MinEgePoints, []*EntranceTest) {
+	defer wg.Done()
+
+	log.Println("sending request to " + progPageSite)
+	if response, err := http.Get(progPageSite); err != nil {
+		log.Println("request to " + progPageSite + " failed", "error: ", err)
+	} else {
+		defer response.Body.Close()
+		status := response.StatusCode
+		log.Println("got response from " + progPageSite, "status", status)
+		if status == http.StatusOK {
+			if doc, err := html.Parse(response.Body); err != nil {
+				log.Println("invalid HTML from " + progPageSite, "error", err)
+			} else {
+				log.Println("HTML from " + progPageSite + " parsed successfully")
+				return searchPrograms(doc, facId, specsIds, subjs)
+			}
+		}
+	}
+
+	return nil, nil, nil
+}
+
+func searchPrograms(node *html.Node, facId int, specsIds map[int]bool, subjs map[string]int) ([]*Program, []*MinEgePoints, []*EntranceTest) {
+	universitiesMainUrl := UniversitiesSite[:20]
+
+	if isElem(node, "div") && getAttr(node, "id") == "refrdiv" {
+		var wg sync.WaitGroup
+		var progs []*Program
+		var minPoints []*MinEgePoints
+		var entrTests []*EntranceTest
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			if isDiv(c, "col-md-12 shadowForItem") {
+				if getAttr(c, "style") != "" {
+					break
+				}
+				if a := getChildren(c.FirstChild.FirstChild)[1].FirstChild.FirstChild; isElem(a, "a") {
+					progSite := universitiesMainUrl + getAttr(a, "href")
+					progName := a.FirstChild.Data
+					wg.Add(1)
+					go func(progSite string) {
+						prog, minPoint, entrTest := parseProgram(&wg, progSite, facId, progName, subjs)
+						if _, ok := specsIds[prog.SpecialityId]; ok {
+							progs = append(progs, prog)
+							minPoints = append(minPoints, minPoint...)
+							entrTests = append(entrTests, entrTest...)
+						}
+					}(progSite)
+				}
+			}
+		}
+
+		wg.Wait()
+
+		return progs, minPoints, entrTests
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if progs, minPoints, entrTests := searchPrograms(c, facId, specsIds, subjs); progs != nil {
+			return progs, minPoints, entrTests
+		}
+	}
+
+	return nil, nil, nil
+}
+
+func parseProgram(wg *sync.WaitGroup, progSite string, facId int, progName string, subjs map[string]int) (*Program, []*MinEgePoints, []*EntranceTest) {
+	defer wg.Done()
+
+	log.Println("sending request to " + progSite)
+	if response, err := http.Get(progSite); err != nil {
+		log.Println("request to " + progSite + " failed", "error: ", err)
+	} else {
+		defer response.Body.Close()
+		status := response.StatusCode
+		log.Println("got response from " + progSite, "status", status)
+		if status == http.StatusOK {
+			if doc, err := html.Parse(response.Body); err != nil {
+				log.Println("invalid HTML from " + progSite, "error", err)
+			} else {
+				log.Println("HTML from " + progSite + " parsed successfully")
+				return searchProgram(doc, progSite, facId, progName, subjs)
+			}
+		}
+	}
+
+	return nil, nil, nil
+}
+
+func searchProgram(node *html.Node, progSite string, facId int, progName string, subjs map[string]int) (*Program, []*MinEgePoints, []*EntranceTest) {
+	if isDiv(node, "content clearfix") {
+		splitted := strings.Split(progSite, "/")
+		progNum, err := strconv.Atoi(splitted[len(splitted) - 1])
+		if err != nil {
+			log.Println("couldn't get university id, got: " + splitted[len(splitted) - 1])
+		}
+
+		var progInfo, progInfo2 *html.Node
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			if isDiv(c, "mainBlock") {
+				progInfo = c
+			} else if isDiv(c, "wrap") {
+				progInfo2 = c
+			}
+		}
+
+		programId, err := uuid.NewV4()
+		if err != nil {
+			log.Println("Something went wrong with UUID:", err)
+		}
+		specialityId, freePassPoints, freePlaces, paidPlaces, fee := searchProgInfo(progInfo)
+		paidPassPoints, studyForm, studyLanguage, studyBase, studyYears, description, minPoints, entrTests := searchProgInfo2(progInfo2, programId, subjs)
+		prog := &Program{
+			ProgramId: programId,
+			ProgramNum: progNum,
+			Name: progName,
+			Description: description,
+			FreePlaces: freePlaces,
+			PaidPlaces: paidPlaces,
+			Fee: fee,
+			FreePassPoints: freePassPoints,
+			PaidPassPoints: paidPassPoints,
+			StudyForm: studyForm,
+			StudyLanguage: studyLanguage,
+			StudyBase: studyBase,
+			StudyYears: studyYears,
+			FacultyId: facId,
+			SpecialityId: specialityId,
+		}
+
+		return prog, minPoints, entrTests
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if prog, minPoints, entrTests := searchProgram(c, progSite, facId, progName, subjs); prog != nil {
+			return prog, minPoints, entrTests
+		}
+	}
+
+	return nil, nil, nil
+}
+
+func searchProgInfo(node *html.Node) (int, int, int, int, float64) {
+	if isDiv(node, "mainSlider-left") {
+		cs := getChildren(node)
+
+		specDivCs := getChildren(cs[1])
+		speciality := specDivCs[1].FirstChild.FirstChild.Data
+		specialityCode := speciality[len(speciality) - 9 : len(speciality) - 1]
+		specialityId, err := strconv.Atoi(strings.ReplaceAll(specialityCode, ".", ""))
+		if err != nil {
+			log.Println("Couldn't convert speciality ID, got: " + specialityCode)
+		}
+
+		freePassPoints := -1
+		freePlaces := -1
+		paidPlaces := -1
+		fee := float64(-1)
+		optDivCs := getChildren(cs[2])[2]
+		if isDiv(optDivCs, "optParent") {
+			for c := optDivCs.FirstChild; c != nil; c = c.NextSibling {
+				if freePassPoints == -1 {
+					freePassPointsData := getChildren(c)[1].FirstChild.Data
+					if freePassPointsData == "нет" {
+						freePassPoints = 0
+					} else {
+						freePassPoints, err = strconv.Atoi(freePassPointsData)
+						if err != nil {
+							log.Println("couldn't get Free pass points, got: " + freePassPointsData)
+						}
+					}
+				} else if freePlaces == -1 {
+					freePlacesData := c.FirstChild.FirstChild.Data
+					if freePlacesData == "нет" {
+						freePlaces = 0
+					} else {
+						freePlaces, err = strconv.Atoi(freePlacesData)
+						if err != nil {
+							log.Println("couldn't get Free places, got: " + freePlacesData)
+						}
+					}
+				} else if paidPlaces == -1 {
+					paidPlacesData := c.FirstChild.FirstChild.Data
+					if paidPlacesData == "нет" {
+						paidPlaces = 0
+					} else {
+						paidPlaces, err = strconv.Atoi(paidPlacesData)
+						if err != nil {
+							log.Println("couldn't get Paid places, got: " + paidPlacesData)
+						}
+					}
+				} else if fee == -1 {
+					feeData := c.FirstChild.FirstChild.Data
+					if feeData == "—" {
+						fee = 0
+					} else {
+						fee, err = strconv.ParseFloat(feeData, 64)
+						if err != nil {
+							log.Println("couldn't get Fee, got: " + feeData)
+						}
+					}
+				}
+			}
+		}
+
+		return specialityId, freePassPoints, freePlaces, paidPlaces, fee
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if specialityId, freePassPoints, freePlaces, paidPlaces, fee := searchProgInfo(c); freePassPoints != -1 {
+			return specialityId, freePassPoints, freePlaces, paidPlaces, fee
+		}
+	}
+
+	return -1, -1, -1, -1, -1
+}
+
+func searchProgInfo2(node *html.Node, programId uuid.UUID, subjs map[string]int) (int, string, string, string, string, string, []*MinEgePoints, []*EntranceTest) {
+	if isDiv(node, "sideContent progpagege") {
+		paidPassPoints := -1
+		var studyForm, studyLanguage, studyBase, studyYears, description string
+		var minPoints []*MinEgePoints
+		var entrTests []*EntranceTest
+
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			if isDiv(c, "tab-content") {
+				for cs := c.FirstChild; cs != nil; cs = cs.NextSibling {
+					if getAttr(cs, "id") == "filial" {
+						paidInfoDiv := cs.FirstChild.LastChild.FirstChild
+						for css := paidInfoDiv.FirstChild; css != nil; css = css.NextSibling {
+							if isElem(css, "strong") {
+								splitted := strings.Split(css.FirstChild.Data, " ")
+								paidPassPoints, _ = strconv.Atoi(splitted[len(splitted) - 1])
+							}
+						}
+					} else if getAttr(cs, "id") == "fak" {
+						minPointsDiv := cs.LastChild
+						if isDiv(minPointsDiv, "col-md-3 col-sm-6 varEgeProg") {
+							isEntrance := false
+							testNames := make(map[string]bool)
+							for css := minPointsDiv.FirstChild; css != nil; css = css.NextSibling {
+								if isDiv(css, "cpPara") {
+									minPointsInfo := css.FirstChild
+									if isText(minPointsInfo) {
+										splitted := strings.Split(minPointsInfo.Data, " - ")
+										subjMinPoints, err := strconv.Atoi(splitted[len(splitted) - 1])
+										if err != nil {
+											log.Println("couldn't convers Min ege points, got: " + splitted[1])
+										}
+										if isEntrance {
+											testName := strings.Join(splitted[:len(splitted) - 1], " ")
+											if _, ok := testNames[testName]; ok {
+												continue
+											}
+											testNames[testName] = true
+											entrTest := &EntranceTest{
+												ProgramId: programId,
+												TestName: testName,
+												MinPoints: subjMinPoints,
+											}
+											entrTests = append(entrTests, entrTest)
+										} else {
+											subj := strings.Split(splitted[0], " (")[0]
+											if subj == "Английский" {
+												subj = "Иностранный язык"
+											}
+											subjectId, ok := subjs[subj]
+											if !ok {
+												log.Println("couldn't find subject key, got: " + subj)
+											}
+											progMinPoints := &MinEgePoints{
+												ProgramId: programId,
+												SubjectId: subjectId,
+												MinPoints: subjMinPoints,
+											}
+											minPoints = append(minPoints, progMinPoints)
+										}
+									}
+								} else if isText(css.FirstChild) && css.FirstChild.Data == "Вступительные испытания" {
+									isEntrance = true
+								}
+							}
+						}
+					}
+				}
+			} else if isDiv(c, "podrInfo") {
+				cs := getChildren(c)
+
+				studyForms := strings.TrimSpace(cs[3].LastChild.Data)
+				if len(studyForms) > 0 {
+					studyForm = studyForms[ : len(studyForms) - 1]
+				}
+
+				studyLangs := strings.TrimSpace(cs[4].LastChild.Data)
+				if len(studyLangs) > 0 {
+					studyLanguage = studyLangs[ : len(studyLangs) - 1]
+				}
+
+				studyBaseInfo := strings.TrimSpace(cs[5].LastChild.Data)
+				if len(studyBaseInfo) > 0 {
+					studyBase = studyBaseInfo[ : len(studyBaseInfo) - 1]
+				}
+
+				studyYearsInfo := strings.TrimSpace(cs[6].LastChild.Data)
+				if len(studyYearsInfo) > 0 {
+					studyYears = studyYearsInfo[ : len(studyYearsInfo) - 1]
+				}
+			} else if isDiv(c, "mainTitleBlTelo") && getAttr(c, "id") == "chemy" {
+				var nodes []*html.Node
+				for cs := c.NextSibling; cs != nil; cs = cs.NextSibling {
+					nodes = append(nodes, cs)
+				}
+				description = takeDescription(nodes)
+			}
+		}
+
+		return paidPassPoints, studyForm, studyLanguage, studyBase, studyYears, description, minPoints, entrTests
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if paidPassPoints, studyForm, studyLanguage, studyBase, studyYears, description, minPoints, entrTests := searchProgInfo2(c, programId, subjs); paidPassPoints != -1 {
+			return paidPassPoints, studyForm, studyLanguage, studyBase, studyYears, description, minPoints, entrTests
+		}
+	}
+
+	return -1, "", "", "", "", "", nil, nil
+}
+
 func main() {
 	// Pfors and Specs
-	//profsBach, specsBach := parseProfsNSpecs(BachelorSpecialitiesSite)
+	//profsBach, specs := parseProfsNSpecs(BachelorSpecialitiesSite)
 	//profsSpec, specsSpec := parseProfsNSpecs(SpecialistSpecialitiesSite)
 	//
-	//profs := make(map[Profile]bool)
+	//profsMap := make(map[Profile]bool)
 	//for _, p := range profsBach {
-	//	profs[*p] = true
+	//	profsMap[*p] = true
 	//}
 	//for _, p := range profsSpec {
-	//	profs[*p] = true
+	//	profsMap[*p] = true
 	//}
+	//profsBach = nil
+	//profsSpec = nil
 	//
-	//insertProfsNSpecs(profs, specsBach, specsSpec)
-	
+	//var profs []*Profile
+	//for profM, _ := range profsMap {
+	//	prof := &Profile{
+	//		ProfileId: profM.ProfileId,
+	//		Name: profM.Name,
+	//	}
+	//	profs = append(profs, prof)
+	//}
+	//profsMap = nil
+	//
+	//specs = append(specs, specsSpec...)
+	//specsSpec = nil
+	//
+	//insertProfsNSpecs(profs, specs)
+	//fmt.Println("Profiles:\n")
+	//for _, prof := range profs {
+	//	fmt.Println(*prof)
+	//}
+	//fmt.Println("\n\nSpecialities:\n")
+	//for _, spec := range specs {
+	//	fmt.Println(*spec)
+	//}
+
 	// Universities
 	//log.Println("Downloader started")
 	//unis := parseUniversities()
@@ -593,16 +1197,58 @@ func main() {
 	//for _, uni := range unis {
 	//	fmt.Println(uni.UniversityId)
 	//}
-	
-	// Faculties
-	log.Println("Downloader started")
-	var unis []*University // needs to be deleted
-	facs := parseFaculties(unis)
-	if len(facs) != 0 {
-		insertFacs(facs)
-	}
 
+	// Faculties
+	//log.Println("Downloader started")
+	//var unis []*University // needs to be deleted
+	//facs := parseFaculties(unis)
+	//if len(facs) != 0 {
+	//	insertFacs(facs)
+	//}
 	//for _, fac := range facs {
 	//	fmt.Println(*fac)
+	//}
+
+	// Subjects
+	//log.Println("Downloader started")
+	//subjs := parseSubjs()
+	//if len(subjs) != 0 {
+	//	insertSubjs(subjs)
+	//}
+	//fmt.Println("Subjects:\n")
+	//for subj, k := range subjs {
+	//	fmt.Println(k, subj)
+	//}
+
+	// Programs
+	//f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	//if err != nil {
+	//	log.Fatalf("error opening file: %v", err)
+	//}
+	//defer f.Close()
+	//log.SetOutput(f)
+
+	log.Println("Downloader started")
+	var facs []*Faculty // needs to be deleted
+	var specs []*Speciality // needs to be deleted
+	var subjs map[string]int // needs to be deleted
+	progs, minPoints, entrTests := parsePrograms(facs, specs, subjs)
+	if len(progs) != 0 {
+		insertProgsNInfo(progs, minPoints, entrTests)
+	}
+	//fmt.Println("Programs:\n")
+	//fmt.Println(len(progs))
+	//for _, prog := range progs {
+	//	fmt.Println(*prog)
+	//}
+	//fmt.Println("\n\nMin points:\n")
+	//fmt.Println(len(minPoints))
+	//for _, minPoint := range minPoints {
+	//	fmt.Println(*minPoint)
+	//}
+	//fmt.Println("\n\nEntrance test:\n")
+	//fmt.Println(len(entrTests))
+	//for _, entrTest := range entrTests {
+	//	fmt.Println(*entrTest)
 	//}
 }

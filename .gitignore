@@ -23,3 +23,7 @@ constants.go
 
 # Ignore DS_Store os x file
 **/.DS_Store
+
+# Ignore debug files
+log.txt
+output.txt

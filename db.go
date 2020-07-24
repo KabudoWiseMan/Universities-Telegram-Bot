@@ -55,7 +55,7 @@ func insertUnis(unis []*University) {
 	}
 }
 
-func insertProfsNSpecs(profs map[Profile]bool, specsBach []*Speciality, specsSpec []*Speciality) {
+func insertProfsNSpecs(profs []*Profile, specs []*Speciality) {
 	db, err := sql.Open("postgres", dbInfo)
 	if err != nil {
 		log.Fatal("Couldn't connect to db")
@@ -64,12 +64,10 @@ func insertProfsNSpecs(profs map[Profile]bool, specsBach []*Speciality, specsSpe
 
 	var valueStringsProfs []string
 	var valueArgsProfs []interface{}
-	i := 0
-	for p := range profs {
+	for i, p := range profs {
 		valueStringsProfs = append(valueStringsProfs, fmt.Sprintf("($%d, $%d)", i * 2 + 1, i * 2 + 2))
 		valueArgsProfs = append(valueArgsProfs, p.ProfileId)
 		valueArgsProfs = append(valueArgsProfs, p.Name)
-		i++
 	}
 
 	sqlStmt := fmt.Sprintf("INSERT INTO profile VALUES %s;", strings.Join(valueStringsProfs, ","))
@@ -79,16 +77,7 @@ func insertProfsNSpecs(profs map[Profile]bool, specsBach []*Speciality, specsSpe
 
 	var valueStringsSpecs []string
 	var valueArgsSpecs []interface{}
-	i = 0
-	for _, s := range specsBach {
-		valueStringsSpecs = append(valueStringsSpecs, fmt.Sprintf("($%d, $%d, $%d, $%d)", i * 4 + 1, i * 4 + 2, i * 4 + 3, i * 4 + 4))
-		valueArgsSpecs = append(valueArgsSpecs, s.SpecialityId)
-		valueArgsSpecs = append(valueArgsSpecs, s.Name)
-		valueArgsSpecs = append(valueArgsSpecs, s.Bachelor)
-		valueArgsSpecs = append(valueArgsSpecs, s.ProfileId)
-		i++
-	}
-	for _, s := range specsSpec {
+	for i, s := range specs {
 		valueStringsSpecs = append(valueStringsSpecs, fmt.Sprintf("($%d, $%d, $%d, $%d)", i * 4 + 1, i * 4 + 2, i * 4 + 3, i * 4 + 4))
 		valueArgsSpecs = append(valueArgsSpecs, s.SpecialityId)
 		valueArgsSpecs = append(valueArgsSpecs, s.Name)
@@ -101,7 +90,6 @@ func insertProfsNSpecs(profs map[Profile]bool, specsBach []*Speciality, specsSpe
 	if _, err = db.Exec(sqlStmt2, valueArgsSpecs...); err != nil {
 		log.Println(err)
 	}
-
 }
 
 func getUnisIdsFromDb() []*University {
@@ -163,4 +151,288 @@ func insertFacs(facs []*Faculty) {
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
 		log.Println(err)
 	}
+}
+
+func getFacsIdsFromDb() []*Faculty {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT faculty_id FROM faculty;")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var facs []*Faculty
+	for rows.Next() {
+		var faculty_id int
+		err := rows.Scan(&faculty_id)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fac := &Faculty{
+			FacultyId: faculty_id,
+		}
+		facs = append(facs, fac)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return facs
+}
+
+//func insertStudyForms(studyForms map[string]int) {
+//	db, err := sql.Open("postgres", dbInfo)
+//	if err != nil {
+//		log.Fatal("Couldn't connect to db")
+//	}
+//	defer db.Close()
+//
+//	var valueStringsStudyForms []string
+//	var valueArgsStudyForms []interface{}
+//	i := 0
+//	for f, k := range studyForms {
+//		valueStringsStudyForms = append(valueStringsStudyForms, fmt.Sprintf("($%d, $%d)", i * 2 + 1, i * 2 + 2))
+//		valueArgsStudyForms = append(valueArgsStudyForms, k)
+//		valueArgsStudyForms = append(valueArgsStudyForms, f)
+//		i++
+//	}
+//
+//	sqlStmt2 := fmt.Sprintf("INSERT INTO study_form VALUES %s;", strings.Join(valueStringsStudyForms, ","))
+//	if _, err = db.Exec(sqlStmt2, valueArgsStudyForms...); err != nil {
+//		log.Println(err)
+//	}
+//}
+
+func insertSubjs(subjs map[string]int) {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	var valueStringsSubjs []string
+	var valueArgsSubjs []interface{}
+	i := 0
+	for s, k := range subjs {
+		valueStringsSubjs = append(valueStringsSubjs, fmt.Sprintf("($%d, $%d)", i * 2 + 1, i * 2 + 2))
+		valueArgsSubjs = append(valueArgsSubjs, k)
+		valueArgsSubjs = append(valueArgsSubjs, s)
+		i++
+	}
+
+	sqlStmt := fmt.Sprintf("INSERT INTO subject VALUES %s;", strings.Join(valueStringsSubjs, ","))
+	if _, err = db.Exec(sqlStmt, valueArgsSubjs...); err != nil {
+		log.Println(err)
+	}
+}
+
+//func getStudyFormsFromDb() map[string]int {
+//	db, err := sql.Open("postgres", dbInfo)
+//	if err != nil {
+//		log.Fatal("Couldn't connect to db")
+//	}
+//	defer db.Close()
+//
+//	studyFormsRows, err := db.Query("SELECT * FROM study_form;")
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer studyFormsRows.Close()
+//
+//	studyForms := make(map[string]int)
+//	for studyFormsRows.Next() {
+//		var study_form_id int
+//		var name string
+//		err := studyFormsRows.Scan(&study_form_id, &name)
+//		if err != nil {
+//			log.Fatal(err)
+//		}
+//
+//		studyForms[name] = study_form_id
+//	}
+//	err = studyFormsRows.Err()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	return studyForms
+//}
+
+func getSubjsFromDb() map[string]int {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	subjsRows, err := db.Query("SELECT * FROM subject;")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer subjsRows.Close()
+
+	subjs := make(map[string]int)
+	for subjsRows.Next() {
+		var subject_id int
+		var name string
+		err := subjsRows.Scan(&subject_id, &name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		subjs[name] = subject_id
+	}
+	err = subjsRows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return subjs
+}
+
+func insertProgs(tx *sql.Tx, progs []*Program) {
+	//db, err := sql.Open("postgres", dbInfo)
+	//if err != nil {
+	//	log.Fatal("Couldn't connect to db")
+	//}
+	//defer db.Close()
+
+	var valueStrings []string
+	var valueArgs []interface{}
+	for i, prog := range progs {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i * 15 + 1, i * 15 + 2, i * 15 + 3, i * 15 + 4, i * 15 + 5, i * 15 + 6, i * 15 + 7, i * 15 + 8, i * 15 + 9, i * 15 + 10, i * 15 + 11, i * 15 + 12, i * 15 + 13, i * 15 + 14, i * 15 + 15))
+		valueArgs = append(valueArgs, prog.ProgramId)
+		valueArgs = append(valueArgs, prog.ProgramNum)
+		valueArgs = append(valueArgs, prog.Name)
+		valueArgs = append(valueArgs, prog.Description)
+		valueArgs = append(valueArgs, prog.FreePlaces)
+		valueArgs = append(valueArgs, prog.PaidPlaces)
+		valueArgs = append(valueArgs, prog.Fee)
+		valueArgs = append(valueArgs, prog.FreePassPoints)
+		valueArgs = append(valueArgs, prog.PaidPassPoints)
+		valueArgs = append(valueArgs, prog.StudyForm)
+		valueArgs = append(valueArgs, prog.StudyLanguage)
+		valueArgs = append(valueArgs, prog.StudyBase)
+		valueArgs = append(valueArgs, prog.StudyYears)
+		valueArgs = append(valueArgs, prog.FacultyId)
+		valueArgs = append(valueArgs, prog.SpecialityId)
+	}
+
+	sqlStmt := fmt.Sprintf("INSERT INTO program VALUES %s;", strings.Join(valueStrings, ","))
+	if _, err := tx.Exec(sqlStmt, valueArgs...); err != nil {
+		log.Println(err)
+		tx.Rollback()
+	}
+}
+
+func insertMinPoints(tx *sql.Tx, minEgePoints []*MinEgePoints) {
+	//db, err := sql.Open("postgres", dbInfo)
+	//if err != nil {
+	//	log.Fatal("Couldn't connect to db")
+	//}
+	//defer db.Close()
+
+	var valueStrings []string
+	var valueArgs []interface{}
+	for i, minPoints := range minEgePoints {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", i * 3 + 1, i * 3 + 2, i * 3 + 3))
+		valueArgs = append(valueArgs, minPoints.ProgramId)
+		valueArgs = append(valueArgs, minPoints.SubjectId)
+		valueArgs = append(valueArgs, minPoints.MinPoints)
+	}
+
+	sqlStmt := fmt.Sprintf("INSERT INTO min_ege_points VALUES %s;", strings.Join(valueStrings, ","))
+	if _, err := tx.Exec(sqlStmt, valueArgs...); err != nil {
+		log.Println(err)
+		tx.Rollback()
+	}
+}
+
+func insertEntrTests(tx *sql.Tx, entrTests []*EntranceTest) {
+	//db, err := sql.Open("postgres", dbInfo)
+	//if err != nil {
+	//	log.Fatal("Couldn't connect to db")
+	//}
+	//defer db.Close()
+
+	var valueStrings []string
+	var valueArgs []interface{}
+	for i, entrTest := range entrTests {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", i * 3 + 1, i * 3 + 2, i * 3 + 3))
+		valueArgs = append(valueArgs, entrTest.ProgramId)
+		valueArgs = append(valueArgs, entrTest.TestName)
+		valueArgs = append(valueArgs, entrTest.MinPoints)
+	}
+
+	sqlStmt := fmt.Sprintf("INSERT INTO entrance_test VALUES %s;", strings.Join(valueStrings, ","))
+	if _, err := tx.Exec(sqlStmt, valueArgs...); err != nil {
+		log.Println(err)
+		tx.Rollback()
+	}
+}
+
+func insertProgsNInfo(progs []*Program, minEgePoints []*MinEgePoints, entrTests []*EntranceTest) {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal("Couldn't begin the transaction")
+	}
+
+	insertProgs(tx, progs)
+	insertMinPoints(tx, minEgePoints)
+
+	if len(entrTests) != 0 {
+		insertEntrTests(tx, entrTests)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Println("couldn't commit the transaction")
+	}
+}
+
+func getSpecsIdsFromDb() []*Speciality {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT speciality_id FROM speciality;")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var specs []*Speciality
+	for rows.Next() {
+		var speciality_id int
+		err := rows.Scan(&speciality_id)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		spec := &Speciality{
+			SpecialityId: speciality_id,
+		}
+		specs = append(specs, spec)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return specs
 }
