@@ -31,7 +31,6 @@ import tgbotapi "github.com/Syfaro/telegram-bot-api"
 var (
 	mainButton = tgbotapi.NewInlineKeyboardButtonData("<< Главное меню >>","main")
 	qsButton = tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт QS", RatingQsSite)
-	ranhigsButton = tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт рейтинга РАНХиГС", RatingRanhigsSite)
 
 	blankMenu = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Ещё не готово", "nil")),
@@ -41,14 +40,12 @@ var (
 	mainMenu = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подбор ВУЗа","uni")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Найти ВУЗ","fUni")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сравнить ВУЗы","comp")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Рейтинг ВУЗов","rate")),
 		tgbotapi.NewInlineKeyboardRow(mainButton),
 	)
 
-	ratingMenu = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Международный рейтинг QS","qs")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Российский рейтинг РАНХиГС","ranhigs")),
+	ratingQSMenu = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(qsButton),
 		tgbotapi.NewInlineKeyboardRow(mainButton),
 	)
 
@@ -58,23 +55,6 @@ var (
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Специальность","spec")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Город","city")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Важно наличие военной кафедры","army")),
-		tgbotapi.NewInlineKeyboardRow(mainButton),
-	)
-
-	compareUnisMenu = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Добавить вуз или специальность","addSpecs")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Удалить вуз или специальность", "delSpecs")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сравнить","compare")),
-		tgbotapi.NewInlineKeyboardRow(mainButton),
-	)
-
-	qsMenu = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(qsButton),
-		tgbotapi.NewInlineKeyboardRow(mainButton),
-	)
-
-	ranhigsMenu = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(ranhigsButton),
 		tgbotapi.NewInlineKeyboardRow(mainButton),
 	)
 

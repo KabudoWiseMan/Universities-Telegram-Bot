@@ -27,3 +27,9 @@ constants.go
 # Ignore debug files
 log.txt
 output.txt
+
+# Ignore db file
+db.sql
+
+# Ignore testing files
+example.go

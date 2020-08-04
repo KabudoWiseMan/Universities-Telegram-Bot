@@ -92,35 +92,62 @@ func insertProfsNSpecs(profs []*Profile, specs []*Speciality) {
 	}
 }
 
-func getUnisIdsFromDb() []*University {
+func getUnisIdsNamesFromDb(withNames bool) []*University {
 	db, err := sql.Open("postgres", dbInfo)
 	if err != nil {
 		log.Fatal("Couldn't connect to db")
 	}
 	defer db.Close()
 
-	rows, err := db.Query("SELECT university_id FROM university;")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
 	var unis []*University
-	for rows.Next() {
-		var university_id int
-		err := rows.Scan(&university_id)
+	if withNames {
+		rows, err := db.Query("SELECT university_id, name FROM university;")
 		if err != nil {
 			log.Fatal(err)
 		}
+		defer rows.Close()
 
-		uni := &University{
-			UniversityId: university_id,
+		for rows.Next() {
+			var university_id int
+			var name string
+			err := rows.Scan(&university_id, &name)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			uni := &University{
+				UniversityId: university_id,
+				Name: name,
+			}
+			unis = append(unis, uni)
 		}
-		unis = append(unis, uni)
-	}
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
+		err = rows.Err()
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		rows, err := db.Query("SELECT university_id FROM university;")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var university_id int
+			err := rows.Scan(&university_id)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			uni := &University{
+				UniversityId: university_id,
+			}
+			unis = append(unis, uni)
+		}
+		err = rows.Err()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	return unis
@@ -436,3 +463,86 @@ func getSpecsIdsFromDb() []*Speciality {
 
 	return specs
 }
+
+func getUniIdFromDb(uniSite string) int {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT university_id FROM university WHERE site LIKE" + "'%www." + uniSite + ".ru%' LIMIT 1;")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var university_id int
+	for rows.Next() {
+		err := rows.Scan(&university_id)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if university_id == 0 {
+		rows2, err := db.Query("SELECT university_id FROM university WHERE site LIKE" + "'%" + uniSite + ".ru%' LIMIT 1;")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer rows2.Close()
+
+		for rows2.Next() {
+			err := rows2.Scan(&university_id)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		err = rows2.Err()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return university_id
+}
+
+func insertRatingQS(ratingQS []*RatingQS) {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	var valueStrings []string
+	var valueArgs []interface{}
+	for i, uniRatingQs := range ratingQS {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", i * 3 + 1, i * 3 + 2, i * 3 + 3))
+		valueArgs = append(valueArgs, uniRatingQs.UniversityId)
+		valueArgs = append(valueArgs, uniRatingQs.HighMark)
+		valueArgs = append(valueArgs, uniRatingQs.LowMark)
+	}
+
+	sqlStmt := fmt.Sprintf("INSERT INTO rating_qs VALUES %s;", strings.Join(valueStrings, ","))
+	if _, err = db.Exec(sqlStmt, valueArgs...); err != nil {
+		log.Println(err)
+	}
+}
+
+//func getQSUnisFromDb() {
+//	db, err := sql.Open("postgres", dbInfo)
+//	if err != nil {
+//		log.Fatal("Couldn't connect to db")
+//	}
+//	defer db.Close()
+//
+//	rows, err := db.Query("SELECT * FROM university u JOIN rating_qs r ON u.university_id = r.university_id;")
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer rows.Close()
+//}

@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"time"
+	"github.com/chromedp/chromedp"
 	uuid "github.com/satori/go.uuid"
 	"golang.org/x/net/html"
 	"golang.org/x/text/encoding/charmap"
@@ -437,7 +441,13 @@ func searchUniInfo2(node *html.Node) (string, string, string, string, bool) {
 		}
 		siteContent := cs[4].LastChild.FirstChild
 		if isText(siteContent) {
-			site = siteContent.Data
+			if siteContent.Data == "http://susu.ac.ru" {
+				site = "http://www.susu.ru"
+			} else if siteContent.Data == "https://www.ba.hse.ru/" {
+				site = "https://www.hse.ru/"
+			} else {
+				site = siteContent.Data
+			}
 		}
 
 		return phone, adress, email, site, true
@@ -460,7 +470,7 @@ func parseFaculties(unis []*University) []*Faculty {
 	facsString := "podrazdeleniya"
 
 	if len(unis) == 0 {
-		unis = getUnisIdsFromDb()
+		unis = getUnisIdsNamesFromDb(false)
 	}
 
 	unisNum := len(unis)
@@ -1149,6 +1159,163 @@ func searchProgInfo2(node *html.Node, programId uuid.UUID, subjs map[string]int)
 	return -1, "", "", "", "", "", nil, nil
 }
 
+func parseRatingQS() []*RatingQS {
+	log.Println("sending request to " + RatingQsSite)
+	if response, err := http.Get(RatingQsSite); err != nil {
+		log.Println("request to " + RatingQsSite + " failed", "error: ", err)
+	} else {
+		defer response.Body.Close()
+		status := response.StatusCode
+		log.Println("got response from " + RatingQsSite, "status", status)
+		if status == http.StatusOK {
+			if doc, err := html.Parse(response.Body); err != nil {
+				log.Println("invalid HTML from " + RatingQsSite, "error", err)
+			} else {
+				log.Println("HTML from " + RatingQsSite + " parsed successfully")
+				return searchRatingQS(doc)
+			}
+		}
+	}
+
+	return nil
+}
+
+func searchRatingQS(node *html.Node) []*RatingQS {
+	if isDiv(node, "uni-list") {
+		mainQSSite := RatingQsSite[:31]
+		unisListString := ""
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			if isElem(c, "a") {
+				unisListString = getAttr(c, "href")
+			}
+		}
+		if unisListString == "" {
+			return nil
+		}
+		unisHtml, err := parseRatingQSListWithChrome(mainQSSite + unisListString)
+		if err != nil {
+			return nil
+		}
+		return parseRatingQSList(unisHtml)
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if unisNames := searchRatingQS(c); unisNames != nil {
+			return unisNames
+		}
+	}
+
+	return nil
+}
+
+func parseRatingQSListWithChrome(unisListUrl string) (string, error) {
+	log.Println("sending request through Chrome to " + unisListUrl)
+	ctx, cancel := chromedp.NewContext(context.Background(), chromedp.WithLogf(log.Printf))
+	defer cancel()
+
+	ctx, cancel = context.WithTimeout(ctx, 15 * time.Second)
+	defer cancel()
+
+	var f []byte
+	var unisHtml string
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(unisListUrl),
+		chromedp.SetValue(`select[name="qs-rankings_length"]`, "-1"),
+		chromedp.EvaluateAsDevTools(`$("select[name='qs-rankings_length']").change()`, &f),
+		chromedp.Sleep(time.Second * 2),
+		chromedp.OuterHTML(`table[id="qs-rankings"]`, &unisHtml),
+	)
+	if err != nil {
+		log.Println("invalid HTML through Chrome from " + unisListUrl, "error", err)
+		return "", err
+	}
+
+	log.Println("HTML from " + unisListUrl + " parsed successfully through Chrome")
+
+	return unisHtml, nil
+}
+
+func parseRatingQSList(unisHtml string) []*RatingQS {
+	if doc, err := html.Parse(strings.NewReader(unisHtml)); err != nil {
+		log.Println("invalid HTML, error", err)
+	} else {
+		log.Println("HTML parsed successfully")
+		return searchRatingQSList(doc)
+	}
+
+	return nil
+}
+
+func searchRatingQSList(node *html.Node) []*RatingQS {
+	if isElem(node, "tbody") {
+		var ratingQS []*RatingQS
+		var wg sync.WaitGroup
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			wg.Add(1)
+			go func(c *html.Node) {
+				defer wg.Done()
+				cs := getChildren(c)
+				if cs[2].FirstChild.FirstChild.Data == "Russia" {
+					uniName := getChildren(cs[1].FirstChild)[1].FirstChild.Data
+					uniMarkElem := cs[0].FirstChild.FirstChild.FirstChild
+					var uniLowMark, uniHighMark int
+					splitted := strings.Split(uniMarkElem.LastChild.Data, "-")
+					if len(splitted) < 2 {
+						mark, err := strconv.Atoi(uniMarkElem.LastChild.Data)
+						if err != nil {
+							log.Println("couldn't convert uni qs small rating, got: " + uniMarkElem.LastChild.Data)
+						}
+						uniLowMark = mark
+						uniHighMark = mark
+					} else {
+						splitted := strings.Split(uniMarkElem.LastChild.Data, "-")
+						if len(splitted) < 2 {
+							log.Println("something's wrong with split, got: " + uniMarkElem.LastChild.Data)
+						}
+						highMark, err := strconv.Atoi(splitted[0])
+						if err != nil {
+							log.Println("couldn't convert uni qs high rating, got: " + uniMarkElem.LastChild.Data)
+						}
+						lowMark, err := strconv.Atoi(splitted[1])
+						if err != nil {
+							log.Println("couldn't convert uni qs low rating, got: " + uniMarkElem.LastChild.Data)
+						}
+						uniHighMark = highMark
+						uniLowMark = lowMark
+					}
+
+					uniSite := wikiSearch(uniName)
+					if uniSite == "" {
+						uniSite = googleWikiSearch(uniName + " wiki")
+					}
+
+					uniId := getUniIdFromDb(uniSite)
+
+					uniRatingQS := &RatingQS{
+						UniversityId: uniId,
+						HighMark: uniHighMark,
+						LowMark: uniLowMark,
+					}
+
+					ratingQS = append(ratingQS, uniRatingQS)
+				}
+			}(c)
+
+		}
+		wg.Wait()
+
+		return ratingQS
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if ratingQS := searchRatingQSList(c); ratingQS != nil {
+			return ratingQS
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	// Pfors and Specs
 	//profsBach, specs := parseProfsNSpecs(BachelorSpecialitiesSite)
@@ -1228,14 +1395,14 @@ func main() {
 	//defer f.Close()
 	//log.SetOutput(f)
 
-	log.Println("Downloader started")
-	var facs []*Faculty // needs to be deleted
-	var specs []*Speciality // needs to be deleted
-	var subjs map[string]int // needs to be deleted
-	progs, minPoints, entrTests := parsePrograms(facs, specs, subjs)
-	if len(progs) != 0 {
-		insertProgsNInfo(progs, minPoints, entrTests)
-	}
+	//log.Println("Downloader started")
+	//var facs []*Faculty // needs to be deleted
+	//var specs []*Speciality // needs to be deleted
+	//var subjs map[string]int // needs to be deleted
+	//progs, minPoints, entrTests := parsePrograms(facs, specs, subjs)
+	//if len(progs) != 0 {
+	//	insertProgsNInfo(progs, minPoints, entrTests)
+	//}
 	//fmt.Println("Programs:\n")
 	//fmt.Println(len(progs))
 	//for _, prog := range progs {
@@ -1251,4 +1418,16 @@ func main() {
 	//for _, entrTest := range entrTests {
 	//	fmt.Println(*entrTest)
 	//}
+
+	// Rating QS
+	log.Println("Downloader started")
+	ratingQS := parseRatingQS()
+	if len(ratingQS) != 0 {
+		insertRatingQS(ratingQS)
+	}
+	for _, uniRatingQS := range ratingQS {
+		fmt.Println(*uniRatingQS)
+	}
 }
+
+

@@ -55,24 +55,11 @@ func main() {
 				msg.ReplyMarkup = &unisCompilationMenu
 			case "fUni":
 				msg.Text = "Введите название университета"
-			case "comp":
-				msg.Text = "Вы можете добавить вузы и/или специальности для сравнения.\n" +
-					"Чтобы получить результат сравнения, нажмите *Сравнить*"
-				msg.ParseMode = "markdown"
-				msg.ReplyMarkup = &compareUnisMenu
 			case "rate":
-				msg.Text = "Выберите рейтинг"
-				msg.ReplyMarkup = &ratingMenu
-			case "qs":
 				msg.Text = "Международный рейтинг вузов QS.\n\n" +
 					"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*"
 				msg.ParseMode = "markdown"
-				msg.ReplyMarkup = &qsMenu
-			case "ranhigs":
-				msg.Text = "Рейтинг вузов, составленный при поддержке РАНХиГС.\n\n" +
-					"Для более подробной информации посетите сайт рейтинга РАНХиГС, нажав на кнопку *Перейти на сайт рейтинга РАНХиГС*"
-				msg.ParseMode = "markdown"
-				msg.ReplyMarkup = &ranhigsMenu
+				msg.ReplyMarkup = &ratingQSMenu
 			}
 
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Done"))

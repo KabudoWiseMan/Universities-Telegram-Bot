@@ -67,3 +67,15 @@ type EntranceTest struct {
 	MinPoints int
 }
 
+type RatingQS struct {
+	UniversityId int
+	HighMark int
+	LowMark int
+}
+
+type UniversityQS struct {
+	UniversityId int
+	Name string
+	Mark string
+}
+
