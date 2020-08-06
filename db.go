@@ -550,6 +550,17 @@ func getUnisQSNumFromDb() int {
 	return count
 }
 
+func makeQSMark(high_mark int, low_mark int) string {
+	var mark string
+	if high_mark == low_mark {
+		mark = strconv.Itoa(high_mark)
+	} else {
+		mark = strconv.Itoa(high_mark) + "-" + strconv.Itoa(low_mark)
+	}
+
+	return mark
+}
+
 func getUnisQSPageFromDb(offset int) []*UniversityQS {
 	db, err := sql.Open("postgres", dbInfo)
 	if err != nil {
@@ -572,12 +583,7 @@ func getUnisQSPageFromDb(offset int) []*UniversityQS {
 			log.Fatal(err)
 		}
 
-		var mark string
-		if high_mark == low_mark {
-			mark = strconv.Itoa(high_mark)
-		} else {
-			mark = strconv.Itoa(high_mark) + "-" + strconv.Itoa(low_mark)
-		}
+		mark := makeQSMark(high_mark, low_mark)
 
 		universityQs := &UniversityQS{
 			UniversityId: university_id,
@@ -595,6 +601,50 @@ func getUnisQSPageFromDb(offset int) []*UniversityQS {
 	return universitiesQS
 }
 
-//func getUniFromDb(uniId int) University {
-//
-//}
+func getUniFromDb(uniId int) University {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	var university_id int
+	var name, description, site, email, adress, phone string
+	var military_dep, dormitary bool
+	err = db.QueryRow("SELECT * FROM university WHERE university_id = " + strconv.Itoa(uniId) + ";").Scan(&university_id, &name, &description, &site, &email, &adress, &phone, &military_dep, &dormitary)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	uni := University{
+		UniversityId: university_id,
+		Name: name,
+		Description: description,
+		Site: site,
+		Email: email,
+		Adress: adress,
+		Phone: phone,
+		MilitaryDep: military_dep,
+		Dormitary: dormitary,
+	}
+
+	return uni
+}
+
+func getUniQSRateFromDb(uniId int) string {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	var high_mark, low_mark int
+	err = db.QueryRow("SELECT high_mark, low_mark FROM rating_qs WHERE university_id = " + strconv.Itoa(uniId) + ";").Scan(&high_mark, &low_mark)
+	if err != nil {
+		return ""
+	}
+
+	mark := makeQSMark(high_mark, low_mark)
+
+	return mark
+}

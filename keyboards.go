@@ -4,6 +4,7 @@ import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 	"math"
 	"strconv"
+	"strings"
 )
 
 //var numericKeyboard = tgbotapi.NewReplyKeyboard(
@@ -53,12 +54,6 @@ var (
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Специальность","spec")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Город","city")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Важно наличие военной кафедры","army")),
-		tgbotapi.NewInlineKeyboardRow(mainButton),
-	)
-
-	uniMenu = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Специальности","specs")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подобрать специальность","findSpecs")),
 		tgbotapi.NewInlineKeyboardRow(mainButton),
 	)
 )
@@ -144,4 +139,29 @@ func makeRatingQsMenu(unisQSNum int, unisQS []*UniversityQS, curPage int) tgbota
 	)
 
 	return ratingQSFullMenu
+}
+
+//func makePrevButton(dataPattern string) tgbotapi.InlineKeyboardButton {
+//	return tgbotapi.NewInlineKeyboardButtonData("<< Назад", dataPattern)
+//}
+
+func makeUniMenu(uni University) tgbotapi.InlineKeyboardMarkup {
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	if !strings.Contains(uni.Site, " ") {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт ВУЗа", uni.Site)))
+	}
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Факультеты","facs")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Профили","profs")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Специальности","specs")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Программы обучения","progs")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подобрать программу обучения","findProg")),
+	//tgbotapi.NewInlineKeyboardRow(makePrevButton(prevDataPattern)),
+		tgbotapi.NewInlineKeyboardRow(mainButton))
+
+
+	uniFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return uniFullMenu
 }

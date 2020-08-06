@@ -2,6 +2,7 @@ package main
 
 import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
+	"html"
 	"log"
 	"net/http"
 	"os"
@@ -64,8 +65,8 @@ func main() {
 				msg.Text += makeTextUnis(unisQS)
 				msg.ParseMode = "markdown"
 				unisQSNum := getUnisQSNumFromDb()
-				rateQSManu := makeRatingQsMenu(unisQSNum, unisQS, 1)
-				msg.ReplyMarkup = &rateQSManu
+				rateQSMenu := makeRatingQsMenu(unisQSNum, unisQS, 1)
+				msg.ReplyMarkup = &rateQSMenu
 			default:
 				data := update.CallbackQuery.Data
 				if strings.Contains(data, "rateQSPage") {
@@ -77,14 +78,17 @@ func main() {
 					msg.Text += makeTextUnis(unisQS)
 					msg.ParseMode = "markdown"
 					unisQSNum := getUnisQSNumFromDb()
-					rateQSManu := makeRatingQsMenu(unisQSNum, unisQS, 1)
-					msg.ReplyMarkup = &rateQSManu
+					rateQSMenu := makeRatingQsMenu(unisQSNum, unisQS, page)
+					msg.ReplyMarkup = &rateQSMenu
+				} else if strings.Contains(data, "getUni") {
+					splitted := strings.Split(data, "#")
+					uniId, _ := strconv.Atoi(splitted[len(splitted) - 1])
+					uni := getUniFromDb(uniId)
+					msg.Text = makeTextUni(uni)
+					msg.ParseMode = "markdown"
+					uniMenu := makeUniMenu(uni)
+					msg.ReplyMarkup = &uniMenu
 				}
-				//else if strings.Contains(data, "rateQSPage") {
-				//	splitted := strings.Split(data, "#")
-				//	uniId, _ := strconv.Atoi(splitted[len(splitted) - 1])
-				//	uni := getUniFromDb(uniId)
-				//}
 			}
 
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Done"))
@@ -124,4 +128,50 @@ func makeTextUnis(unisQS []*UniversityQS) string {
 	}
 
 	return res[:len(res) - 2]
+}
+
+func makeTextUni(uni University) string {
+	res := "*" + uni.Name + "*"
+	if uni.Description != "" {
+		res += "\n\n" + uni.Description
+	}
+
+	ratingQS := getUniQSRateFromDb(uni.UniversityId)
+	if ratingQS != "" {
+		res += "\n\n*Рейтинг QS:* " + ratingQS
+	}
+
+	if strings.Contains(uni.Site, " ") {
+		res += "\n\n*Сайты:* " + uni.Site
+	}
+
+	if uni.Phone != "" {
+		res += "\n\n*Телефон:* " + uni.Phone
+	}
+	if uni.Email != "" {
+		res += "\n\n*E-mail:* " + uni.Email
+	}
+	if uni.Adress != "" {
+		res += "\n\n*Адрес:* " + uni.Adress
+	}
+
+	res += "\n\n*Военная кафедра:* "
+	if uni.MilitaryDep {
+		res += makeEmoji(CheckEmoji)
+	} else {
+		res += makeEmoji(CrossEmoji)
+	}
+
+	res += "\n\n*Общежитие:* "
+	if uni.Dormitary {
+		res += makeEmoji(CheckEmoji)
+	} else {
+		res += makeEmoji(CrossEmoji)
+	}
+
+	return res
+}
+
+func makeEmoji(i int) string {
+	return html.UnescapeString("&#" + strconv.Itoa(i) + ";")
 }
