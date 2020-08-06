@@ -11,7 +11,7 @@ func substrAfter(value string, a string) string {
 	if adjustedPos >= len(value) {
 		return ""
 	}
-	return value[adjustedPos:len(value)]
+	return value[adjustedPos:]
 }
 
 func substrBetween(value string, a string, b string) string {

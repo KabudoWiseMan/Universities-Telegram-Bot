@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func MainHandler(resp http.ResponseWriter, _ *http.Request) {
@@ -57,9 +59,32 @@ func main() {
 				msg.Text = "Введите название университета"
 			case "rate":
 				msg.Text = "Международный рейтинг вузов QS.\n\n" +
-					"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*"
+					"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*\n\n"
+				unisQS := getUnisQSPageFromDb(0)
+				msg.Text += makeTextUnis(unisQS)
 				msg.ParseMode = "markdown"
-				msg.ReplyMarkup = &ratingQSMenu
+				unisQSNum := getUnisQSNumFromDb()
+				rateQSManu := makeRatingQsMenu(unisQSNum, unisQS, 1)
+				msg.ReplyMarkup = &rateQSManu
+			default:
+				data := update.CallbackQuery.Data
+				if strings.Contains(data, "rateQSPage") {
+					splitted := strings.Split(data, "#")
+					page, _ := strconv.Atoi(splitted[len(splitted) - 1])
+					msg.Text = "Международный рейтинг вузов QS.\n\n" +
+						"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*\n\n"
+					unisQS := getUnisQSPageFromDb((page - 1) * 5)
+					msg.Text += makeTextUnis(unisQS)
+					msg.ParseMode = "markdown"
+					unisQSNum := getUnisQSNumFromDb()
+					rateQSManu := makeRatingQsMenu(unisQSNum, unisQS, 1)
+					msg.ReplyMarkup = &rateQSManu
+				}
+				//else if strings.Contains(data, "rateQSPage") {
+				//	splitted := strings.Split(data, "#")
+				//	uniId, _ := strconv.Atoi(splitted[len(splitted) - 1])
+				//	uni := getUniFromDb(uniId)
+				//}
 			}
 
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Done"))
@@ -90,4 +115,13 @@ func main() {
 		}
 	}
 
+}
+
+func makeTextUnis(unisQS []*UniversityQS) string {
+	var res string
+	for _, uniQS := range unisQS {
+		res += "*" + uniQS.Mark + "* " + uniQS.Name + "\n\n"
+	}
+
+	return res[:len(res) - 2]
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"time"
 	"github.com/chromedp/chromedp"
 	uuid "github.com/satori/go.uuid"
@@ -1316,118 +1315,118 @@ func searchRatingQSList(node *html.Node) []*RatingQS {
 	return nil
 }
 
-func main() {
-	// Pfors and Specs
-	//profsBach, specs := parseProfsNSpecs(BachelorSpecialitiesSite)
-	//profsSpec, specsSpec := parseProfsNSpecs(SpecialistSpecialitiesSite)
-	//
-	//profsMap := make(map[Profile]bool)
-	//for _, p := range profsBach {
-	//	profsMap[*p] = true
-	//}
-	//for _, p := range profsSpec {
-	//	profsMap[*p] = true
-	//}
-	//profsBach = nil
-	//profsSpec = nil
-	//
-	//var profs []*Profile
-	//for profM, _ := range profsMap {
-	//	prof := &Profile{
-	//		ProfileId: profM.ProfileId,
-	//		Name: profM.Name,
-	//	}
-	//	profs = append(profs, prof)
-	//}
-	//profsMap = nil
-	//
-	//specs = append(specs, specsSpec...)
-	//specsSpec = nil
-	//
-	//insertProfsNSpecs(profs, specs)
-	//fmt.Println("Profiles:\n")
-	//for _, prof := range profs {
-	//	fmt.Println(*prof)
-	//}
-	//fmt.Println("\n\nSpecialities:\n")
-	//for _, spec := range specs {
-	//	fmt.Println(*spec)
-	//}
-
-	// Universities
-	//log.Println("Downloader started")
-	//unis := parseUniversities()
-	//fmt.Println(len(unis))
-	//if len(unis) != 0 {
-	//	insertUnis(unis)
-	//}
-	//for _, uni := range unis {
-	//	fmt.Println(uni.UniversityId)
-	//}
-
-	// Faculties
-	//log.Println("Downloader started")
-	//var unis []*University // needs to be deleted
-	//facs := parseFaculties(unis)
-	//if len(facs) != 0 {
-	//	insertFacs(facs)
-	//}
-	//for _, fac := range facs {
-	//	fmt.Println(*fac)
-	//}
-
-	// Subjects
-	//log.Println("Downloader started")
-	//subjs := parseSubjs()
-	//if len(subjs) != 0 {
-	//	insertSubjs(subjs)
-	//}
-	//fmt.Println("Subjects:\n")
-	//for subj, k := range subjs {
-	//	fmt.Println(k, subj)
-	//}
-
-	// Programs
-	//f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
-	//if err != nil {
-	//	log.Fatalf("error opening file: %v", err)
-	//}
-	//defer f.Close()
-	//log.SetOutput(f)
-
-	//log.Println("Downloader started")
-	//var facs []*Faculty // needs to be deleted
-	//var specs []*Speciality // needs to be deleted
-	//var subjs map[string]int // needs to be deleted
-	//progs, minPoints, entrTests := parsePrograms(facs, specs, subjs)
-	//if len(progs) != 0 {
-	//	insertProgsNInfo(progs, minPoints, entrTests)
-	//}
-	//fmt.Println("Programs:\n")
-	//fmt.Println(len(progs))
-	//for _, prog := range progs {
-	//	fmt.Println(*prog)
-	//}
-	//fmt.Println("\n\nMin points:\n")
-	//fmt.Println(len(minPoints))
-	//for _, minPoint := range minPoints {
-	//	fmt.Println(*minPoint)
-	//}
-	//fmt.Println("\n\nEntrance test:\n")
-	//fmt.Println(len(entrTests))
-	//for _, entrTest := range entrTests {
-	//	fmt.Println(*entrTest)
-	//}
-
-	// Rating QS
-	log.Println("Downloader started")
-	ratingQS := parseRatingQS()
-	if len(ratingQS) != 0 {
-		insertRatingQS(ratingQS)
-	}
-	for _, uniRatingQS := range ratingQS {
-		fmt.Println(*uniRatingQS)
-	}
-}
+//func main() {
+//	// Pfors and Specs
+//	//profsBach, specs := parseProfsNSpecs(BachelorSpecialitiesSite)
+//	//profsSpec, specsSpec := parseProfsNSpecs(SpecialistSpecialitiesSite)
+//	//
+//	//profsMap := make(map[Profile]bool)
+//	//for _, p := range profsBach {
+//	//	profsMap[*p] = true
+//	//}
+//	//for _, p := range profsSpec {
+//	//	profsMap[*p] = true
+//	//}
+//	//profsBach = nil
+//	//profsSpec = nil
+//	//
+//	//var profs []*Profile
+//	//for profM, _ := range profsMap {
+//	//	prof := &Profile{
+//	//		ProfileId: profM.ProfileId,
+//	//		Name: profM.Name,
+//	//	}
+//	//	profs = append(profs, prof)
+//	//}
+//	//profsMap = nil
+//	//
+//	//specs = append(specs, specsSpec...)
+//	//specsSpec = nil
+//	//
+//	//insertProfsNSpecs(profs, specs)
+//	//fmt.Println("Profiles:\n")
+//	//for _, prof := range profs {
+//	//	fmt.Println(*prof)
+//	//}
+//	//fmt.Println("\n\nSpecialities:\n")
+//	//for _, spec := range specs {
+//	//	fmt.Println(*spec)
+//	//}
+//
+//	// Universities
+//	//log.Println("Downloader started")
+//	//unis := parseUniversities()
+//	//fmt.Println(len(unis))
+//	//if len(unis) != 0 {
+//	//	insertUnis(unis)
+//	//}
+//	//for _, uni := range unis {
+//	//	fmt.Println(uni.UniversityId)
+//	//}
+//
+//	// Faculties
+//	//log.Println("Downloader started")
+//	//var unis []*University // needs to be deleted
+//	//facs := parseFaculties(unis)
+//	//if len(facs) != 0 {
+//	//	insertFacs(facs)
+//	//}
+//	//for _, fac := range facs {
+//	//	fmt.Println(*fac)
+//	//}
+//
+//	// Subjects
+//	//log.Println("Downloader started")
+//	//subjs := parseSubjs()
+//	//if len(subjs) != 0 {
+//	//	insertSubjs(subjs)
+//	//}
+//	//fmt.Println("Subjects:\n")
+//	//for subj, k := range subjs {
+//	//	fmt.Println(k, subj)
+//	//}
+//
+//	// Programs
+//	//f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+//	//if err != nil {
+//	//	log.Fatalf("error opening file: %v", err)
+//	//}
+//	//defer f.Close()
+//	//log.SetOutput(f)
+//
+//	//log.Println("Downloader started")
+//	//var facs []*Faculty // needs to be deleted
+//	//var specs []*Speciality // needs to be deleted
+//	//var subjs map[string]int // needs to be deleted
+//	//progs, minPoints, entrTests := parsePrograms(facs, specs, subjs)
+//	//if len(progs) != 0 {
+//	//	insertProgsNInfo(progs, minPoints, entrTests)
+//	//}
+//	//fmt.Println("Programs:\n")
+//	//fmt.Println(len(progs))
+//	//for _, prog := range progs {
+//	//	fmt.Println(*prog)
+//	//}
+//	//fmt.Println("\n\nMin points:\n")
+//	//fmt.Println(len(minPoints))
+//	//for _, minPoint := range minPoints {
+//	//	fmt.Println(*minPoint)
+//	//}
+//	//fmt.Println("\n\nEntrance test:\n")
+//	//fmt.Println(len(entrTests))
+//	//for _, entrTest := range entrTests {
+//	//	fmt.Println(*entrTest)
+//	//}
+//
+//	// Rating QS
+//	log.Println("Downloader started")
+//	ratingQS := parseRatingQS()
+//	if len(ratingQS) != 0 {
+//		insertRatingQS(ratingQS)
+//	}
+//	for _, uniRatingQS := range ratingQS {
+//		fmt.Println(*uniRatingQS)
+//	}
+//}
 
 

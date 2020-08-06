@@ -5,6 +5,7 @@ import (
 	"fmt"
 	_ "github.com/lib/pq"
 	"log"
+	"strconv"
 	"strings"
 )
 
@@ -533,16 +534,67 @@ func insertRatingQS(ratingQS []*RatingQS) {
 	}
 }
 
-//func getQSUnisFromDb() {
-//	db, err := sql.Open("postgres", dbInfo)
-//	if err != nil {
-//		log.Fatal("Couldn't connect to db")
-//	}
-//	defer db.Close()
+func getUnisQSNumFromDb() int {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM rating_qs;").Scan(&count)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return count
+}
+
+func getUnisQSPageFromDb(offset int) []*UniversityQS {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT u.university_id, u.name, rq.high_mark, rq.low_mark FROM university u JOIN rating_qs rq on u.university_id = rq.university_id ORDER BY high_mark LIMIT 5 OFFSET " + strconv.Itoa(offset) + ";")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var universitiesQS []*UniversityQS
+	for rows.Next() {
+		var university_id, high_mark, low_mark int
+		var name string
+		err := rows.Scan(&university_id, &name, &high_mark, &low_mark)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var mark string
+		if high_mark == low_mark {
+			mark = strconv.Itoa(high_mark)
+		} else {
+			mark = strconv.Itoa(high_mark) + "-" + strconv.Itoa(low_mark)
+		}
+
+		universityQs := &UniversityQS{
+			UniversityId: university_id,
+			Name: name,
+			Mark: mark,
+		}
+
+		universitiesQS = append(universitiesQS, universityQs)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return universitiesQS
+}
+
+//func getUniFromDb(uniId int) University {
 //
-//	rows, err := db.Query("SELECT * FROM university u JOIN rating_qs r ON u.university_id = r.university_id;")
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	defer rows.Close()
 //}

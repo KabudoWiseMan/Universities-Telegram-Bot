@@ -1,6 +1,10 @@
 package main
 
-import tgbotapi "github.com/Syfaro/telegram-bot-api"
+import (
+	tgbotapi "github.com/Syfaro/telegram-bot-api"
+	"math"
+	"strconv"
+)
 
 //var numericKeyboard = tgbotapi.NewReplyKeyboard(
 //	tgbotapi.NewKeyboardButtonRow(
@@ -40,13 +44,7 @@ var (
 	mainMenu = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подбор ВУЗа","uni")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Найти ВУЗ","fUni")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Рейтинг ВУЗов","rate")),
-		tgbotapi.NewInlineKeyboardRow(mainButton),
-	)
-
-	ratingQSMenu = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(qsButton),
-		tgbotapi.NewInlineKeyboardRow(mainButton),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Рейтинг ВУЗов QS","rate")),
 	)
 
 	unisCompilationMenu = tgbotapi.NewInlineKeyboardMarkup(
@@ -64,3 +62,86 @@ var (
 		tgbotapi.NewInlineKeyboardRow(mainButton),
 	)
 )
+
+func makePaginator(elementsNum int, elementsOnPage int, curPage int, dataPattern string) []tgbotapi.InlineKeyboardButton {
+	pagesNum := int(math.Ceil(float64(elementsNum) / float64(elementsOnPage)))
+
+	if pagesNum == 1 {
+		return []tgbotapi.InlineKeyboardButton{}
+	}
+
+	var paginatorButtons []tgbotapi.InlineKeyboardButton
+
+	if pagesNum <= 5 {
+		for i := 1; i <= pagesNum; i++ {
+			text := strconv.Itoa(i)
+			if i == curPage {
+				text = "•" + text + "•"
+			}
+
+			paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData(text, dataPattern + "#" + strconv.Itoa(i)))
+		}
+
+		return paginatorButtons
+	}
+
+	if curPage <= 3 {
+		for i := 1; i < 4; i++ {
+			text := strconv.Itoa(i)
+			if i == curPage {
+				text = "•" + text + "•"
+			}
+
+			paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData(text, dataPattern + "#" + strconv.Itoa(i)))
+		}
+
+		paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData("4 ›", dataPattern + "#4"))
+		paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(pagesNum) + " »", dataPattern + "#" + strconv.Itoa(pagesNum)))
+
+		return paginatorButtons
+	}
+
+	if curPage > pagesNum - 3 {
+		paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData("« 1", dataPattern + "#1"))
+		paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData("‹ " + strconv.Itoa(pagesNum - 3), dataPattern + "#" + strconv.Itoa(pagesNum - 3)))
+
+		for i := pagesNum - 2; i <= pagesNum; i++ {
+			text := strconv.Itoa(i)
+			if i == curPage {
+				text = "•" + text + "•"
+			}
+
+			paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData(text, dataPattern + "#" + strconv.Itoa(i)))
+		}
+
+		return paginatorButtons
+	}
+
+	paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData("« 1", dataPattern + "#1"))
+	paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData("‹ " + strconv.Itoa(curPage - 1), dataPattern + "#" + strconv.Itoa(curPage - 1)))
+	paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData("•" + strconv.Itoa(curPage) + "•", dataPattern + "#" + strconv.Itoa(curPage)))
+	paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(curPage + 1) + " ›", dataPattern + "#" + strconv.Itoa(curPage + 1)))
+	paginatorButtons = append(paginatorButtons, tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(pagesNum) + " »", dataPattern + "#" + strconv.Itoa(pagesNum)))
+
+	return paginatorButtons
+}
+
+func makeRatingQsMenu(unisQSNum int, unisQS []*UniversityQS, curPage int) tgbotapi.InlineKeyboardMarkup {
+	var unisQSButtons [][]tgbotapi.InlineKeyboardButton
+	for _, uniQS := range unisQS {
+		unisQSButtons = append(unisQSButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(uniQS.Name, "getUni#" + strconv.Itoa(uniQS.UniversityId))))
+	}
+
+	paginator := makePaginator(unisQSNum, 5, curPage, "rateQSPage")
+
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	fullButtons = append(fullButtons, unisQSButtons...)
+	fullButtons = append(fullButtons, paginator)
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(qsButton), tgbotapi.NewInlineKeyboardRow(mainButton))
+	
+	ratingQSFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return ratingQSFullMenu
+}
