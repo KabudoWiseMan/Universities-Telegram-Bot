@@ -36,7 +36,7 @@ import (
 var (
 	mainButton = tgbotapi.NewInlineKeyboardButtonData("<< Главное меню >>","main")
 	qsButton = tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт QS", RatingQsSite)
-	backButton = tgbotapi.NewInlineKeyboardButtonData("<< Назад", "prev")
+	backButton = tgbotapi.NewInlineKeyboardButtonData("<< Назад", "back")
 
 	blankMenu = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Ещё не готово", "nil")),

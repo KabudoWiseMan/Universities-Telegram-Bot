@@ -41,7 +41,7 @@ func main() {
 	http.HandleFunc("/", MainHandler)
 	go http.ListenAndServe(":" + os.Getenv("PORT"), nil)
 
-	usersFSM := &FSM{make(map[int64]*UserInfo)}
+	users := InitUsers()
 
 	for update := range updates {
 		if update.CallbackQuery != nil {
@@ -52,7 +52,7 @@ func main() {
 
 			switch update.CallbackQuery.Data {
 			case "main":
-				usersFSM.Delete(chatID)
+				users.Delete(chatID)
 				msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
 					"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
 				msg.ReplyMarkup = &mainMenu
@@ -62,14 +62,15 @@ func main() {
 			case "fUni":
 				msg.Text = "Введите название университета"
 			case "rate":
-				usersFSM.SetState(chatID, RatingQSState)
+				users.User(chatID).State = RatingQSState
 				text, rateQSMenu := handleRatingQSRequest(1)
 				msg.Text = text
 				msg.ParseMode = "markdown"
 				msg.ReplyMarkup = &rateQSMenu
-			case "prev":
-				if usersFSM.State(chatID) == RatingQSState {
-					text, rateQSMenu := handleRatingQSRequest(usersFSM.Page(chatID))
+			case "back":
+				user := users.User(chatID)
+				if user.State == RatingQSState {
+					text, rateQSMenu := handleRatingQSRequest(user.Page)
 					msg.Text = text
 					msg.ParseMode = "markdown"
 					msg.ReplyMarkup = &rateQSMenu
@@ -79,9 +80,7 @@ func main() {
 				if strings.Contains(data, "rateQSPage") {
 					splitted := strings.Split(data, "#")
 					page, _ := strconv.Atoi(splitted[len(splitted) - 1])
-					log.Println("PREV_STATE:", usersFSM.State(chatID))
-					usersFSM.SetPage(chatID, page)
-					log.Println("STATE:", usersFSM.State(chatID))
+					users.User(chatID).Page = page
 					text, rateQSMenu := handleRatingQSRequest(page)
 					msg.Text = text
 					msg.ParseMode = "markdown"
@@ -111,7 +110,7 @@ func main() {
 				msg := tgbotapi.NewMessage(chatID, "")
 				switch update.Message.Command() {
 				case "start", "help":
-					usersFSM.Delete(chatID)
+					users.Delete(chatID)
 					msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
 						"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
 					msg.ReplyMarkup = mainMenu
@@ -131,9 +130,6 @@ func main() {
 func handleRatingQSRequest(page int) (string, tgbotapi.InlineKeyboardMarkup) {
 	text := "Международный рейтинг вузов QS.\n\n" +
 		"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*\n\n"
-	if page < 1 {
-		page = 1
-	}
 
 	unisQS := getUnisQSPageFromDb((page - 1) * 5)
 	text += makeTextUnis(unisQS)
