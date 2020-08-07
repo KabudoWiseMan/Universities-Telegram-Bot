@@ -2,7 +2,6 @@ package main
 
 import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
-	"html"
 	"log"
 	"net/http"
 	"os"
@@ -19,7 +18,7 @@ func isAdmin(chatID int64) bool {
 }
 
 func main() {
-	//db, err := connect();
+	//db, err := connect()
 	//if err != nil {
 	//	log.Panic(err)
 	//}
@@ -42,14 +41,18 @@ func main() {
 	http.HandleFunc("/", MainHandler)
 	go http.ListenAndServe(":" + os.Getenv("PORT"), nil)
 
+	usersFSM := &FSM{make(map[int64]*UserInfo)}
+
 	for update := range updates {
 		if update.CallbackQuery != nil {
-			log.Printf("[%s u: %d c: %d] %s\n", update.CallbackQuery.From.UserName, update.CallbackQuery.From.ID, update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Data)
+			chatID := update.CallbackQuery.Message.Chat.ID
+			log.Printf("[%s u: %d c: %d] %s\n", update.CallbackQuery.From.UserName, update.CallbackQuery.From.ID, chatID, update.CallbackQuery.Data)
 
 			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID, "")
 
 			switch update.CallbackQuery.Data {
 			case "main":
+				usersFSM.Delete(chatID)
 				msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
 					"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
 				msg.ReplyMarkup = &mainMenu
@@ -59,26 +62,29 @@ func main() {
 			case "fUni":
 				msg.Text = "Введите название университета"
 			case "rate":
-				msg.Text = "Международный рейтинг вузов QS.\n\n" +
-					"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*\n\n"
-				unisQS := getUnisQSPageFromDb(0)
-				msg.Text += makeTextUnis(unisQS)
+				usersFSM.SetState(chatID, RatingQSState)
+				text, rateQSMenu := handleRatingQSRequest(1)
+				msg.Text = text
 				msg.ParseMode = "markdown"
-				unisQSNum := getUnisQSNumFromDb()
-				rateQSMenu := makeRatingQsMenu(unisQSNum, unisQS, 1)
 				msg.ReplyMarkup = &rateQSMenu
+			case "prev":
+				if usersFSM.State(chatID) == RatingQSState {
+					text, rateQSMenu := handleRatingQSRequest(usersFSM.Page(chatID))
+					msg.Text = text
+					msg.ParseMode = "markdown"
+					msg.ReplyMarkup = &rateQSMenu
+				}
 			default:
 				data := update.CallbackQuery.Data
 				if strings.Contains(data, "rateQSPage") {
 					splitted := strings.Split(data, "#")
 					page, _ := strconv.Atoi(splitted[len(splitted) - 1])
-					msg.Text = "Международный рейтинг вузов QS.\n\n" +
-						"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*\n\n"
-					unisQS := getUnisQSPageFromDb((page - 1) * 5)
-					msg.Text += makeTextUnis(unisQS)
+					log.Println("PREV_STATE:", usersFSM.State(chatID))
+					usersFSM.SetPage(chatID, page)
+					log.Println("STATE:", usersFSM.State(chatID))
+					text, rateQSMenu := handleRatingQSRequest(page)
+					msg.Text = text
 					msg.ParseMode = "markdown"
-					unisQSNum := getUnisQSNumFromDb()
-					rateQSMenu := makeRatingQsMenu(unisQSNum, unisQS, page)
 					msg.ReplyMarkup = &rateQSMenu
 				} else if strings.Contains(data, "getUni") {
 					splitted := strings.Split(data, "#")
@@ -105,6 +111,7 @@ func main() {
 				msg := tgbotapi.NewMessage(chatID, "")
 				switch update.Message.Command() {
 				case "start", "help":
+					usersFSM.Delete(chatID)
 					msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
 						"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
 					msg.ReplyMarkup = mainMenu
@@ -121,57 +128,18 @@ func main() {
 
 }
 
-func makeTextUnis(unisQS []*UniversityQS) string {
-	var res string
-	for _, uniQS := range unisQS {
-		res += "*" + uniQS.Mark + "* " + uniQS.Name + "\n\n"
+func handleRatingQSRequest(page int) (string, tgbotapi.InlineKeyboardMarkup) {
+	text := "Международный рейтинг вузов QS.\n\n" +
+		"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*\n\n"
+	if page < 1 {
+		page = 1
 	}
 
-	return res[:len(res) - 2]
-}
+	unisQS := getUnisQSPageFromDb((page - 1) * 5)
+	text += makeTextUnis(unisQS)
 
-func makeTextUni(uni University) string {
-	res := "*" + uni.Name + "*"
-	if uni.Description != "" {
-		res += "\n\n" + uni.Description
-	}
+	unisQSNum := getUnisQSNumFromDb()
+	rateQSMenu := makeRatingQsMenu(unisQSNum, unisQS, page)
 
-	ratingQS := getUniQSRateFromDb(uni.UniversityId)
-	if ratingQS != "" {
-		res += "\n\n*Рейтинг QS:* " + ratingQS
-	}
-
-	if strings.Contains(uni.Site, " ") {
-		res += "\n\n*Сайты:* " + uni.Site
-	}
-
-	if uni.Phone != "" {
-		res += "\n\n*Телефон:* " + uni.Phone
-	}
-	if uni.Email != "" {
-		res += "\n\n*E-mail:* " + uni.Email
-	}
-	if uni.Adress != "" {
-		res += "\n\n*Адрес:* " + uni.Adress
-	}
-
-	res += "\n\n*Военная кафедра:* "
-	if uni.MilitaryDep {
-		res += makeEmoji(CheckEmoji)
-	} else {
-		res += makeEmoji(CrossEmoji)
-	}
-
-	res += "\n\n*Общежитие:* "
-	if uni.Dormitary {
-		res += makeEmoji(CheckEmoji)
-	} else {
-		res += makeEmoji(CrossEmoji)
-	}
-
-	return res
-}
-
-func makeEmoji(i int) string {
-	return html.UnescapeString("&#" + strconv.Itoa(i) + ";")
+	return text, rateQSMenu
 }
