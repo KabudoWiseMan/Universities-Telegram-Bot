@@ -60,3 +60,12 @@ func makeTextUni(uni University) string {
 
 	return res
 }
+
+func makeTextFacs(facs []*Faculty) string {
+	var res string
+	for _, fac := range facs {
+		res += "*" + fac.Name + "*\n\n"
+	}
+
+	return res[:len(res) - 2]
+}

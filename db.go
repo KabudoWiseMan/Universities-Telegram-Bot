@@ -648,3 +648,56 @@ func getUniQSRateFromDb(uniId int) string {
 
 	return mark
 }
+
+func getFacsNumFromDb(uniId int) int {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM faculty WHERE university_id = " + strconv.Itoa(uniId) + ";").Scan(&count)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return count
+}
+
+func getFacsPageFromDb(uniId int, offset int) []*Faculty {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT faculty_id, name FROM faculty WHERE university_id = " + strconv.Itoa(uniId) + " ORDER BY faculty_id LIMIT 5 OFFSET " + strconv.Itoa(offset))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var facs []*Faculty
+	for rows.Next() {
+		var faculty_id int
+		var name string
+		err := rows.Scan(&faculty_id, &name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fac := &Faculty{
+			FacultyId: faculty_id,
+			Name: name,
+		}
+
+		facs = append(facs, fac)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return facs
+}
