@@ -9,7 +9,6 @@ const (
 
 type UserInfo struct {
 	State int
-	Page int
 }
 
 type Users struct {
@@ -26,7 +25,6 @@ func (usrs *Users) User(userId int64) *UserInfo {
 	} else {
 		newUser := &UserInfo{
 			State: NoState,
-			Page: 1,
 		}
 
 		usrs.users[userId] = newUser
