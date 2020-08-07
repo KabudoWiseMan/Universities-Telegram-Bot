@@ -49,7 +49,10 @@ func handleBackRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 		}
 	}
 
-	return "", tgbotapi.NewInlineKeyboardMarkup()
+	text := "Добро пожаловать в бота для подбора университета!\n\n" +
+		"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
+
+	return text, mainMenu
 }
 
 func handleUniRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
