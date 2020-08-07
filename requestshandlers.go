@@ -39,6 +39,9 @@ func handleBackRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 		text := makeTextUni(uni)
 		uniMenu := makeUniMenu(uni, page)
 		return text, uniMenu
+	} else if strings.Contains(data, "Facs") {
+		text, rateQSMenu := handleFacsRequest(data)
+		return text, rateQSMenu
 	} else {
 		if user.State == RatingQSState {
 			text, rateQSMenu := handleRatingQSRequest(data)
@@ -86,11 +89,17 @@ func handleFacsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	text += makeTextFacs(facs)
 
 	facsNum := getFacsNumFromDb(uniId)
-	facsMenu := makeFacsMenu(facsNum, uniId, facs, pages)
+	facsMenu := makeFacsMenu(facsNum, facs, pages)
 
 	return text, facsMenu
 }
 
-//func handleFacRequest(data string, chatID int64, users *Users) {
-//
-//}
+func handleFacRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+	pages := takePages(data)
+	facId := takeId(data)
+	fac := getFacFromDb(facId)
+
+	text := makeTextFac(fac)
+	facMenu := makeFacMenu(fac, pages)
+	return text, facMenu
+}

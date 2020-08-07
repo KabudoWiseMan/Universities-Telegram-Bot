@@ -85,12 +85,11 @@ func main() {
 					text, rateQSMenu := handleBackRequest(data, user)
 					msg.Text = text
 					msg.ReplyMarkup = &rateQSMenu
+				} else if strings.Contains(data, "getFac") {
+					text, facMenu := handleFacRequest(data)
+					msg.Text = text
+					msg.ReplyMarkup = &facMenu
 				}
-				//else if strings.Contains(data, "getFac") {
-				//	text, facMenu := handleFacRequest(data, chatID, users)
-				//	msg.Text = text
-				//	msg.ReplyMarkup = &facMenu
-				//}
 			}
 
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Done"))

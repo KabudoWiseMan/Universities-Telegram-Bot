@@ -69,3 +69,26 @@ func makeTextFacs(facs []*Faculty) string {
 
 	return res[:len(res) - 2]
 }
+
+func makeTextFac(fac Faculty) string {
+	res := "*" + fac.Name + "*"
+	if fac.Description != "" {
+		res += "\n\n" + fac.Description
+	}
+
+	if strings.Contains(fac.Site, " ") {
+		res += "\n\n*Сайты:* " + fac.Site
+	}
+
+	if fac.Phone != "" {
+		res += "\n\n*Телефон:* " + fac.Phone
+	}
+	if fac.Email != "" {
+		res += "\n\n*E-mail:* " + fac.Email
+	}
+	if fac.Adress != "" {
+		res += "\n\n*Адрес:* " + fac.Adress
+	}
+
+	return res
+}

@@ -165,7 +165,8 @@ func makeBackButton(data string) tgbotapi.InlineKeyboardButton {
 	return tgbotapi.NewInlineKeyboardButtonData("<< Назад", data)
 }
 
-func makeFacsMenu(facsNum int, uniId int, facs []*Faculty, pages []int) tgbotapi.InlineKeyboardMarkup {
+func makeFacsMenu(facsNum int, facs []*Faculty, pages []int) tgbotapi.InlineKeyboardMarkup {
+	uniId := facs[0].UniversityId
 	unisPage := pages[0]
 	facsPage := pages[1]
 
@@ -186,4 +187,27 @@ func makeFacsMenu(facsNum int, uniId int, facs []*Faculty, pages []int) tgbotapi
 	)
 
 	return ratingQSFullMenu
+}
+
+func makeFacMenu(fac Faculty, pages []int) tgbotapi.InlineKeyboardMarkup {
+	uniId := fac.UniversityId
+	unisPage := pages[0]
+	facsPage := pages[1]
+
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	if !strings.Contains(fac.Site, " ") {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт факультета", fac.Site)))
+	}
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Профили", "profs#" + strconv.Itoa(fac.FacultyId))),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Программы обучения", "progs#" + strconv.Itoa(fac.FacultyId))),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подобрать программу обучения", "findProg#" + strconv.Itoa(fac.FacultyId))),
+		tgbotapi.NewInlineKeyboardRow(makeBackButton("backFacs&" + strconv.Itoa(uniId) + "#" + strconv.Itoa(unisPage) + "#" + strconv.Itoa(facsPage))),
+		tgbotapi.NewInlineKeyboardRow(mainButton),
+	)
+
+	uniFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return uniFullMenu
 }

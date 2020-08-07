@@ -688,6 +688,7 @@ func getFacsPageFromDb(uniId int, offset int) []*Faculty {
 		}
 
 		fac := &Faculty{
+			UniversityId: uniId,
 			FacultyId: faculty_id,
 			Name: name,
 		}
@@ -700,4 +701,32 @@ func getFacsPageFromDb(uniId int, offset int) []*Faculty {
 	}
 
 	return facs
+}
+
+func getFacFromDb(facId int) Faculty {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	var university_id, faculty_id int
+	var name, description, site, email, adress, phone string
+	err = db.QueryRow("SELECT * FROM faculty WHERE faculty_id = " + strconv.Itoa(facId) + ";").Scan(&faculty_id, &name, &description, &site, &email, &adress, &phone, &university_id)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fac := Faculty{
+		FacultyId: faculty_id,
+		Name: name,
+		Description: description,
+		Site: site,
+		Email: email,
+		Adress: adress,
+		Phone: phone,
+		UniversityId: university_id,
+	}
+
+	return fac
 }
