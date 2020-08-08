@@ -211,3 +211,23 @@ func makeFacMenu(fac Faculty, pages []int) tgbotapi.InlineKeyboardMarkup {
 
 	return uniFullMenu
 }
+
+func makeUnisMenu(unisNum int, unis []*University, curPage int) tgbotapi.InlineKeyboardMarkup {
+	var unisButtons [][]tgbotapi.InlineKeyboardButton
+	for _, uni := range unis {
+		unisButtons = append(unisButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(uni.Name, "getUni&" + strconv.Itoa(uni.UniversityId) + "#" + strconv.Itoa(curPage))))
+	}
+
+	paginator := makePaginator(unisNum, 5, curPage, "findUniPage")
+
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	fullButtons = append(fullButtons, unisButtons...)
+	fullButtons = append(fullButtons, paginator)
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	ratingFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return ratingFullMenu
+}

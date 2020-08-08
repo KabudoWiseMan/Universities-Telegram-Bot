@@ -672,7 +672,7 @@ func getFacsPageFromDb(uniId int, offset int) []*Faculty {
 	}
 	defer db.Close()
 
-	rows, err := db.Query("SELECT faculty_id, name FROM faculty WHERE university_id = " + strconv.Itoa(uniId) + " ORDER BY faculty_id LIMIT 5 OFFSET " + strconv.Itoa(offset))
+	rows, err := db.Query("SELECT faculty_id, name FROM faculty WHERE university_id = " + strconv.Itoa(uniId) + " LIMIT 5 OFFSET " + strconv.Itoa(offset))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -729,4 +729,66 @@ func getFacFromDb(facId int) Faculty {
 	}
 
 	return fac
+}
+
+func getFindUnisNumFromDb(query string) int {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM university_name_descr_vector WHERE name_descr_vector @@ plainto_tsquery('" + query + "');").Scan(&count)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return count
+}
+
+func findUnisInDb(query string, offset int) []*University {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	dbQuery := "SELECT u.university_id, u.name FROM university u " +
+		"JOIN (" +
+		"SELECT university_id, ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) " +
+		"FROM university_name_descr_vector " +
+		"WHERE name_descr_vector @@ plainto_tsquery('" + query + "') " +
+		"ORDER BY ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) DESC " +
+		"LIMIT 5 OFFSET " + strconv.Itoa(offset) +
+		") l ON (u.university_id = l.university_id);"
+
+	rows, err := db.Query(dbQuery)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var unis []*University
+	for rows.Next() {
+		var university_id int
+		var name string
+		err := rows.Scan(&university_id, &name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		uni := &University{
+			UniversityId: university_id,
+			Name: name,
+		}
+
+		unis = append(unis, uni)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return unis
 }

@@ -1,19 +1,20 @@
 package main
 
-import (
-	"html"
-	"strconv"
-	"strings"
-)
+import "strings"
 
-func makeEmoji(i int) string {
-	return html.UnescapeString("&#" + strconv.Itoa(i) + ";")
-}
-
-func makeTextUnis(unisQS []*UniversityQS) string {
+func makeTextUnisQS(unisQS []*UniversityQS) string {
 	var res string
 	for _, uniQS := range unisQS {
 		res += "*" + uniQS.Mark + "* " + uniQS.Name + "\n\n"
+	}
+
+	return res[:len(res) - 2]
+}
+
+func makeTextUnis(unis []*University) string {
+	var res string
+	for _, uni := range unis {
+		res += uni.Name + "\n\n"
 	}
 
 	return res[:len(res) - 2]
@@ -64,7 +65,7 @@ func makeTextUni(uni University) string {
 func makeTextFacs(facs []*Faculty) string {
 	var res string
 	for _, fac := range facs {
-		res += "*" + fac.Name + "*\n\n"
+		res += fac.Name + "\n\n"
 	}
 
 	return res[:len(res) - 2]

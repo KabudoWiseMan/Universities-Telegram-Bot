@@ -9,6 +9,8 @@ const (
 
 type UserInfo struct {
 	State int
+	LastId int
+	Query string
 }
 
 type Users struct {
@@ -25,6 +27,7 @@ func (usrs *Users) User(userId int64) *UserInfo {
 	} else {
 		newUser := &UserInfo{
 			State: NoState,
+			LastId: 0,
 		}
 
 		usrs.users[userId] = newUser

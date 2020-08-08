@@ -18,6 +18,10 @@ func takePage(data string) int {
 	page, _ := strconv.Atoi(splitted[len(splitted) - 1])
 	return page
 }
+func takeUniQuery(data string) string {
+	splitted := strings.Split(data, "#")
+	return splitted[0]
+}
 
 func takePages(data string) []int {
 	var pages []int
@@ -46,6 +50,9 @@ func handleBackRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 		if user.State == RatingQSState {
 			text, rateQSMenu := handleRatingQSRequest(data)
 			return text, rateQSMenu
+		} else if user.State == FindUniState {
+			text, findUniMenu := handleFindUniRequest(user.Query + "#" + data)
+			return text, findUniMenu
 		}
 	}
 
@@ -72,7 +79,7 @@ func handleRatingQSRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) 
 		"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*\n\n"
 
 	unisQS := getUnisQSPageFromDb((page - 1) * 5)
-	text += makeTextUnis(unisQS)
+	text += makeTextUnisQS(unisQS)
 
 	unisQSNum := getUnisQSNumFromDb()
 	rateQSMenu := makeRatingQsMenu(unisQSNum, unisQS, page)
@@ -105,4 +112,25 @@ func handleFacRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	text := makeTextFac(fac)
 	facMenu := makeFacMenu(fac, pages)
 	return text, facMenu
+}
+
+func handleFindUniRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+	query := takeUniQuery(data)
+	page := takePage(data)
+
+	unisNum := getFindUnisNumFromDb(query)
+	if unisNum == 0 {
+		text := "По запросу *\"" + query + "\"* ничего не найдено " + makeEmoji(CryingEmoji) + "\n\n" +
+			"Возможно нужно ввести полное название университета " + makeEmoji(WinkEmoji)
+		return text, tgbotapi.NewInlineKeyboardMarkup()
+	}
+
+	text := "Результаты поиска по запросу *\"" + query + "\"*:\n\n"
+
+	unis := findUnisInDb(query, (page - 1) * 5)
+	text += makeTextUnis(unis)
+
+	rateQSMenu := makeUnisMenu(unisNum, unis, page)
+
+	return text, rateQSMenu
 }

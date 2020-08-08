@@ -60,6 +60,7 @@ func main() {
 				msg.Text = "Введите один или несколько критериев для получения подборки университетов"
 				msg.ReplyMarkup = &unisCompilationMenu
 			case "fUni":
+				users.User(chatID).State = FindUniState
 				msg.Text = "Введите название университета"
 			case "rate":
 				users.User(chatID).State = RatingQSState
@@ -89,6 +90,12 @@ func main() {
 					text, facMenu := handleFacRequest(data)
 					msg.Text = text
 					msg.ReplyMarkup = &facMenu
+				} else if strings.Contains(data, "findUniPage") {
+					text, findUniMenu := handleFindUniRequest(users.User(chatID).Query + "#" + data)
+					msg.Text = text
+					if len(findUniMenu.InlineKeyboard) != 0 {
+						msg.ReplyMarkup = &findUniMenu
+					}
 				}
 			}
 
@@ -102,8 +109,9 @@ func main() {
 
 			log.Printf("[%s u: %d c: %d] %s\n", update.Message.From.UserName, userID, chatID, update.Message.Text)
 
+			msg := tgbotapi.NewMessage(chatID, "")
+			msg.ParseMode = "markdown"
 			if update.Message.IsCommand() {
-				msg := tgbotapi.NewMessage(chatID, "")
 				switch update.Message.Command() {
 				case "start", "help":
 					users.Delete(chatID)
@@ -117,7 +125,17 @@ func main() {
 				continue
 			}
 
-			bot.Send(tgbotapi.NewMessage(chatID, "Я не знаю, что вам на это ответить"))
+			users.User(chatID).State = FindUniState
+			users.User(chatID).Query = update.Message.Text
+			text, findUniMenu := handleFindUniRequest(update.Message.Text + "#1")
+			msg.Text = text
+			if len(findUniMenu.InlineKeyboard) != 0 {
+				msg.ReplyMarkup = &findUniMenu
+			}
+
+			bot.Send(msg)
+
+			//bot.Send(tgbotapi.NewMessage(chatID, "Я не знаю, что вам на это ответить"))
 		}
 	}
 
