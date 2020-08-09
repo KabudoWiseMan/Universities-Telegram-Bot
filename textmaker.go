@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 func makeTextUnisQS(unisQS []*UniversityQS) string {
 	var res string
@@ -92,4 +95,22 @@ func makeTextFac(fac Faculty) string {
 	}
 
 	return res
+}
+
+func makeProfOrSpecCode(profOrSpecId int) string {
+	strId := strconv.Itoa(profOrSpecId)
+	if len(strId) == 5 {
+		strId = "0" + strId
+	}
+
+	return strId[:2] + "." + strId[2:4] + "." + strId[4:6]
+}
+
+func makeTextProfs(profs []*Profile) string {
+	var res string
+	for _, prof := range profs {
+		res += "*" + makeProfOrSpecCode(prof.ProfileId) + "* " + prof.Name + "\n\n"
+	}
+
+	return res[:len(res) - 2]
 }

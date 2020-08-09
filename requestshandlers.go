@@ -44,8 +44,11 @@ func handleBackRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 		uniMenu := makeUniMenu(uni, page)
 		return text, uniMenu
 	} else if strings.Contains(data, "Facs") {
-		text, rateQSMenu := handleFacsRequest(data)
-		return text, rateQSMenu
+		text, facsMenu := handleFacsRequest(data)
+		return text, facsMenu
+	} else if strings.Contains(data, "Fac") {
+		text, facMenu := handleFacRequest(data)
+		return text, facMenu
 	} else {
 		if user.State == RatingQSState {
 			text, rateQSMenu := handleRatingQSRequest(data)
@@ -133,4 +136,47 @@ func handleFindUniRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	rateQSMenu := makeUnisMenu(unisNum, unis, page)
 
 	return text, rateQSMenu
+}
+
+func handleProfsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+	pages := takePages(data)
+	uniPage := pages[0]
+	uniOrFacId := takeId(data)
+
+	var text string
+	var profs []*Profile
+	var profsNum, curPage int
+	pagesPattern := "&" + strconv.Itoa(uniOrFacId) + "#" + strconv.Itoa(uniPage)
+	backPattern := strconv.Itoa(uniOrFacId)
+
+	if len(pages) == 3 {
+		facsPage := pages[1]
+		curPage = pages[2]
+
+		fac := getFacFromDb(uniOrFacId)
+		text = "*" + fac.Name + "*\n\n" +
+			"Профили:\n\n"
+
+		profs = getFacProfsPageFromDb(uniOrFacId, (curPage - 1) * 5)
+
+		profsNum = getFacProfsNumFromDb(uniOrFacId)
+
+		pagesPattern += "#" + strconv.Itoa(facsPage)
+		backPattern = "backFac&" + backPattern + "#" + strconv.Itoa(uniPage) + "#" + strconv.Itoa(facsPage)
+	} else {
+		curPage = pages[1]
+		uni := getUniFromDb(uniOrFacId)
+		text = "*" + uni.Name + "*\n\n" +
+			"Профили:\n\n"
+
+		profs = getUniProfsPageFromDb(uniOrFacId, (curPage - 1) * 5)
+
+		profsNum = getUniProfsNumFromDb(uniOrFacId)
+		backPattern = "backUni&" + backPattern + "#" + strconv.Itoa(uniPage)
+	}
+
+	text += makeTextProfs(profs)
+	profsMenu := makeProfsMenu(profsNum, profs, pagesPattern, backPattern, curPage)
+
+	return text, profsMenu
 }

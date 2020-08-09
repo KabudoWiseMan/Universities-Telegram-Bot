@@ -534,7 +534,7 @@ func insertRatingQS(ratingQS []*RatingQS) {
 	}
 }
 
-func getUnisQSNumFromDb() int {
+func getCountFromDb(from string) int {
 	db, err := sql.Open("postgres", dbInfo)
 	if err != nil {
 		log.Fatal("Couldn't connect to db")
@@ -542,12 +542,16 @@ func getUnisQSNumFromDb() int {
 	defer db.Close()
 
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM rating_qs;").Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM " + from + ";").Scan(&count)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	return count
+}
+
+func getUnisQSNumFromDb() int {
+	return getCountFromDb("rating_qs")
 }
 
 func makeQSMark(high_mark int, low_mark int) string {
@@ -650,19 +654,7 @@ func getUniQSRateFromDb(uniId int) string {
 }
 
 func getFacsNumFromDb(uniId int) int {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
-	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM faculty WHERE university_id = " + strconv.Itoa(uniId) + ";").Scan(&count)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return count
+	return getCountFromDb("faculty WHERE university_id = " + strconv.Itoa(uniId))
 }
 
 func getFacsPageFromDb(uniId int, offset int) []*Faculty {
@@ -732,38 +724,17 @@ func getFacFromDb(facId int) Faculty {
 }
 
 func getFindUnisNumFromDb(query string) int {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
-	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM university_name_descr_vector WHERE name_descr_vector @@ plainto_tsquery('" + query + "');").Scan(&count)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return count
+	return getCountFromDb("university_name_descr_vector WHERE name_descr_vector @@ plainto_tsquery('" + query + "')")
 }
 
-func findUnisInDb(query string, offset int) []*University {
+func getUnisIdsNNamesFromDb(query string) []*University {
 	db, err := sql.Open("postgres", dbInfo)
 	if err != nil {
 		log.Fatal("Couldn't connect to db")
 	}
 	defer db.Close()
 
-	dbQuery := "SELECT u.university_id, u.name FROM university u " +
-		"JOIN (" +
-		"SELECT university_id, ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) " +
-		"FROM university_name_descr_vector " +
-		"WHERE name_descr_vector @@ plainto_tsquery('" + query + "') " +
-		"ORDER BY ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) DESC " +
-		"LIMIT 5 OFFSET " + strconv.Itoa(offset) +
-		") l ON (u.university_id = l.university_id);"
-
-	rows, err := db.Query(dbQuery)
+	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -791,4 +762,100 @@ func findUnisInDb(query string, offset int) []*University {
 	}
 
 	return unis
+}
+
+func findUnisInDb(query string, offset int) []*University {
+	dbQuery := "SELECT u.university_id, u.name FROM university u " +
+		"JOIN (" +
+		"SELECT university_id, ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) " +
+		"FROM university_name_descr_vector " +
+		"WHERE name_descr_vector @@ plainto_tsquery('" + query + "') " +
+		"ORDER BY ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) DESC " +
+		"LIMIT 5 OFFSET " + strconv.Itoa(offset) +
+		") l ON (u.university_id = l.university_id);"
+
+	return getUnisIdsNNamesFromDb(dbQuery)
+}
+
+func getUniProfsNumFromDb(uniId int) int {
+	from := "(" +
+		"SELECT DISTINCT s.profile_id FROM speciality s " +
+		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
+		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
+		"JOIN university u ON (f.university_id = u.university_id) " +
+		"WHERE u.university_id = " + strconv.Itoa(uniId) +
+		") l"
+	return getCountFromDb(from)
+}
+
+func getProfsFromDb(query string) []*Profile {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var profs []*Profile
+	for rows.Next() {
+		var profile_id int
+		var name string
+		err := rows.Scan(&profile_id, &name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		prof := &Profile{
+			ProfileId: profile_id,
+			Name: name,
+		}
+
+		profs = append(profs, prof)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return profs
+}
+
+func getUniProfsPageFromDb(uniId int, offset int) []*Profile {
+	query := "SELECT p.* FROM profile p " +
+		"JOIN (" +
+		"SELECT DISTINCT s.profile_id FROM speciality s " +
+		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
+		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
+		"JOIN university u ON (f.university_id = u.university_id) " +
+		"WHERE u.university_id = " + strconv.Itoa(uniId) +
+		") l ON (p.profile_id = l.profile_id) " +
+		"LIMIT 5 OFFSET " + strconv.Itoa(offset) + ";"
+	return getProfsFromDb(query)
+}
+
+func getFacProfsNumFromDb(facId int) int {
+	from := "(" +
+		"SELECT DISTINCT s.profile_id FROM speciality s " +
+		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
+		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
+		"WHERE f.faculty_id = " + strconv.Itoa(facId) +
+		") l"
+	return getCountFromDb(from)
+}
+
+func getFacProfsPageFromDb(facId int, offset int) []*Profile {
+	query := "SELECT p.* FROM profile p " +
+		"JOIN (" +
+		"SELECT DISTINCT s.profile_id FROM speciality s " +
+		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
+		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
+		"WHERE f.faculty_id = " + strconv.Itoa(facId) +
+		") l ON (p.profile_id = l.profile_id) " +
+		"LIMIT 5 OFFSET " + strconv.Itoa(offset) + ";"
+	return getProfsFromDb(query)
 }

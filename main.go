@@ -96,6 +96,10 @@ func main() {
 					if len(findUniMenu.InlineKeyboard) != 0 {
 						msg.ReplyMarkup = &findUniMenu
 					}
+				} else if strings.Contains(data, "profs") {
+					text, profsMenu := handleProfsRequest(data)
+					msg.Text = text
+					msg.ReplyMarkup = &profsMenu
 				}
 			}
 
