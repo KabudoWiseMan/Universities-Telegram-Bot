@@ -224,6 +224,7 @@ func handleSpecsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 		specs = getFacSpecsPageFromDb(uniOrFacId, profId, (curPage - 1) * 5)
 		specsNum = getFacSpecsNumFromDb(uniOrFacId, profId)
 
+		progsPattern += "#" + strconv.Itoa(facsPage)
 		pagesPattern += "#" + strconv.Itoa(facsPage)
 		backPattern += "#" + strconv.Itoa(facsPage)
 	} else {
