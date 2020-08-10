@@ -235,13 +235,33 @@ func makeUnisMenu(unisNum int, unis []*University, curPage int) tgbotapi.InlineK
 func makeProfsMenu(profsNum int, profs []*Profile, pagesPattern string, backPattern string, curPage int) tgbotapi.InlineKeyboardMarkup {
 	var profsButtons [][]tgbotapi.InlineKeyboardButton
 	for _, prof := range profs {
-		profsButtons = append(profsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(makeProfOrSpecCode(prof.ProfileId) + " " + prof.Name, "specs&" + strconv.Itoa(prof.ProfileId) + pagesPattern + "#" + strconv.Itoa(curPage))))
+		profsButtons = append(profsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(makeProfOrSpecCode(prof.ProfileId) + " " + prof.Name, "specs&" + strconv.Itoa(prof.ProfileId) + pagesPattern + "#" + strconv.Itoa(curPage) + "#1")))
 	}
 
 	paginator := makePaginator(profsNum, 5, curPage, "profs" + pagesPattern)
 
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 	fullButtons = append(fullButtons, profsButtons...)
+	fullButtons = append(fullButtons, paginator)
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)), tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	profsFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return profsFullMenu
+}
+
+func makeSpecsMenu(specsNum int, specs []*Speciality, pagesPattern string, backPattern string, progsPattern string, curPage int) tgbotapi.InlineKeyboardMarkup {
+	var specsButtons [][]tgbotapi.InlineKeyboardButton
+	for _, spec := range specs {
+		specsButtons = append(specsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(makeProfOrSpecCode(spec.SpecialityId) + " " + spec.Name, "progs&" + strconv.Itoa(spec.SpecialityId) + progsPattern + "#" + strconv.Itoa(curPage) + "#1")))
+	}
+
+	paginator := makePaginator(specsNum, 5, curPage, "specs" + pagesPattern)
+
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	fullButtons = append(fullButtons, specsButtons...)
 	fullButtons = append(fullButtons, paginator)
 	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)), tgbotapi.NewInlineKeyboardRow(mainButton))
 

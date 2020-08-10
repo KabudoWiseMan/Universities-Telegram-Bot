@@ -114,3 +114,18 @@ func makeTextProfs(profs []*Profile) string {
 
 	return res[:len(res) - 2]
 }
+
+func makeTextSpecs(specs []*Speciality) string {
+	var res string
+	for _, spec := range specs {
+		var bachelorStr string
+		if spec.Bachelor {
+			bachelorStr = "Бакалавриат"
+		} else {
+			bachelorStr = "Специалитет"
+		}
+		res += "*" + makeProfOrSpecCode(spec.SpecialityId) + "* " + spec.Name + " *" + bachelorStr + "*\n\n"
+	}
+
+	return res[:len(res) - 2]
+}

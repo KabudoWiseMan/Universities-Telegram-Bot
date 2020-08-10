@@ -9,18 +9,26 @@ import (
 func takeId(data string) int {
 	splitted := strings.Split(data, "#")
 	splitted2 := strings.Split(splitted[0], "&")
-	uniId, _ := strconv.Atoi(splitted2[len(splitted2) - 1])
-	return uniId
+	id, _ := strconv.Atoi(splitted2[len(splitted2) - 1])
+	return id
+}
+
+func takeIds(data string) []int {
+	var ids []int
+	splitted := strings.Split(data, "#")
+	splitted2 := strings.Split(splitted[0], "&")
+	for _, s := range splitted2[1:] {
+		id, _ := strconv.Atoi(s)
+		ids = append(ids, id)
+	}
+
+	return ids
 }
 
 func takePage(data string) int {
 	splitted := strings.Split(data, "#")
 	page, _ := strconv.Atoi(splitted[len(splitted) - 1])
 	return page
-}
-func takeUniQuery(data string) string {
-	splitted := strings.Split(data, "#")
-	return splitted[0]
 }
 
 func takePages(data string) []int {
@@ -32,6 +40,11 @@ func takePages(data string) []int {
 	}
 
 	return pages
+}
+
+func takeUniQuery(data string) string {
+	splitted := strings.Split(data, "#")
+	return splitted[0]
 }
 
 func handleBackRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
@@ -48,6 +61,9 @@ func handleBackRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 		return text, facsMenu
 	} else if strings.Contains(data, "Fac") {
 		text, facMenu := handleFacRequest(data)
+		return text, facMenu
+	} else if strings.Contains(data, "Profs") {
+		text, facMenu := handleProfsRequest(data)
 		return text, facMenu
 	} else {
 		if user.State == RatingQSState {
@@ -180,3 +196,103 @@ func handleProfsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 
 	return text, profsMenu
 }
+
+func handleSpecsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+	pages := takePages(data)
+	uniPage := pages[0]
+	ids := takeIds(data)
+	profId := ids[0]
+	uniOrFacId := ids[1]
+
+	prof := getProfFromDb(profId)
+
+	var text string
+	var specs []*Speciality
+	var specsNum, profsPage, curPage int
+	progsPattern := "&" + strconv.Itoa(uniOrFacId) + "#" + strconv.Itoa(uniPage)
+	pagesPattern := "&" + strconv.Itoa(profId) + "&" + strconv.Itoa(uniOrFacId) + "#" + strconv.Itoa(uniPage)
+	backPattern := "backProfs&" + strconv.Itoa(uniOrFacId) + "#" + strconv.Itoa(uniPage)
+
+	if len(pages) == 4 {
+		facsPage := pages[1]
+		profsPage = pages[2]
+		curPage = pages[3]
+
+		fac := getFacFromDb(uniOrFacId)
+		text = "*" + fac.Name + "*\n\n"
+
+		specs = getFacSpecsPageFromDb(uniOrFacId, profId, (curPage - 1) * 5)
+		specsNum = getFacSpecsNumFromDb(uniOrFacId, profId)
+
+		pagesPattern += "#" + strconv.Itoa(facsPage)
+		backPattern += "#" + strconv.Itoa(facsPage)
+	} else {
+		profsPage = pages[1]
+		curPage = pages[2]
+
+		uni := getUniFromDb(uniOrFacId)
+		text = "*" + uni.Name + "*\n\n"
+
+		specs = getUniSpecsPageFromDb(uniOrFacId, profId, (curPage - 1) * 5)
+		specsNum = getUniSpecsNumFromDb(uniOrFacId, profId)
+	}
+
+	pagesPattern += "#" + strconv.Itoa(profsPage)
+	backPattern += "#" + strconv.Itoa(profsPage)
+	progsPattern += "#" + strconv.Itoa(profsPage)
+
+	text += "Специальности по профилю *" + makeProfOrSpecCode(prof.ProfileId) + "* " + prof.Name + ":\n\n"
+	text += makeTextSpecs(specs)
+	specsMenu := makeSpecsMenu(specsNum, specs, pagesPattern, backPattern, progsPattern, curPage)
+
+	return text, specsMenu
+}
+
+//func handleProgsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+//	pages := takePages(data)
+//	uniPage := pages[0]
+//	ids := takeIds(data)
+//	profId := ids[0]
+//	uniOrFacId := ids[1]
+//
+//	prof := getProfFromDb(profId)
+//
+//	var text string
+//	var specs []*Speciality
+//	var specsNum, profsPage, curPage int
+//	pagesPattern := "&" + strconv.Itoa(profId) + "&" + strconv.Itoa(uniOrFacId) + "#" + strconv.Itoa(uniPage)
+//	backPattern := "backProfs&" + strconv.Itoa(uniOrFacId) + "#" + strconv.Itoa(uniPage)
+//
+//	if len(pages) == 4 {
+//		facsPage := pages[1]
+//		profsPage = pages[2]
+//		curPage = pages[3]
+//
+//		fac := getFacFromDb(uniOrFacId)
+//		text = "*" + fac.Name + "*\n\n"
+//
+//		specs = getFacSpecsPageFromDb(uniOrFacId, profId, (curPage - 1) * 5)
+//		specsNum = getFacSpecsNumFromDb(uniOrFacId, profId)
+//
+//		pagesPattern += "#" + strconv.Itoa(facsPage)
+//		backPattern += "#" + strconv.Itoa(facsPage)
+//	} else {
+//		profsPage = pages[1]
+//		curPage = pages[2]
+//
+//		uni := getUniFromDb(uniOrFacId)
+//		text = "*" + uni.Name + "*\n\n"
+//
+//		specs = getUniSpecsPageFromDb(uniOrFacId, profId, (curPage - 1) * 5)
+//		specsNum = getUniSpecsNumFromDb(uniOrFacId, profId)
+//	}
+//
+//	pagesPattern += "#" + strconv.Itoa(profsPage)
+//	backPattern += "#" + strconv.Itoa(profsPage)
+//
+//	text += "Специальности по профилю *" + makeProfOrSpecCode(prof.ProfileId) + "* " + prof.Name + ":\n\n"
+//	text += makeTextSpecs(specs)
+//	specsMenu := makeSpecsMenu(specsNum, specs, pagesPattern, backPattern, curPage)
+//
+//	return text, specsMenu
+//}
