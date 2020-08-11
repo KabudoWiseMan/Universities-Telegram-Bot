@@ -121,13 +121,14 @@ func makePaginator(elementsNum int, elementsOnPage int, curPage int, dataPattern
 	return paginatorButtons
 }
 
-func makeRatingQsMenu(unisQSNum int, unisQS []*UniversityQS, curPage int) tgbotapi.InlineKeyboardMarkup {
+func makeRatingQsMenu(unisQSNum int, unisQS []*UniversityQS, curPage string) tgbotapi.InlineKeyboardMarkup {
 	var unisQSButtons [][]tgbotapi.InlineKeyboardButton
 	for _, uniQS := range unisQS {
-		unisQSButtons = append(unisQSButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(uniQS.Name, "getUni&" + strconv.Itoa(uniQS.UniversityId) + "#" + strconv.Itoa(curPage))))
+		unisQSButtons = append(unisQSButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(uniQS.Name, "getUni&" + strconv.Itoa(uniQS.UniversityId) + "#" + curPage)))
 	}
 
-	paginator := makePaginator(unisQSNum, 5, curPage, "rateQSPage")
+	curPageNum, _ := strconv.Atoi(curPage)
+	paginator := makePaginator(unisQSNum, 5, curPageNum, "rateQSPage")
 
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 	fullButtons = append(fullButtons, unisQSButtons...)
@@ -141,16 +142,16 @@ func makeRatingQsMenu(unisQSNum int, unisQS []*UniversityQS, curPage int) tgbota
 	return ratingQSFullMenu
 }
 
-func makeUniMenu(uni University, page int) tgbotapi.InlineKeyboardMarkup {
+func makeUniMenu(uni University, page string) tgbotapi.InlineKeyboardMarkup {
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 	if uni.Site != "" && !strings.Contains(uni.Site, " ") {
 		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт ВУЗа", uni.Site)))
 	}
-	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Факультеты", "facs&" + strconv.Itoa(uni.UniversityId) + "#" + strconv.Itoa(page) + "#1")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Профили", "profs&" + strconv.Itoa(uni.UniversityId) + "#" + strconv.Itoa(page) + "#1")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Программы обучения", "progs&" + strconv.Itoa(uni.UniversityId) + "#" + strconv.Itoa(page) + "#1")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подобрать программу обучения", "findProg&" + strconv.Itoa(uni.UniversityId) + "#" + strconv.Itoa(page) + "#1")),
-		tgbotapi.NewInlineKeyboardRow(makeBackButton("back#" + strconv.Itoa(page))),
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Факультеты", "facs&" + strconv.Itoa(uni.UniversityId) + "#" + page + "#1")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Профили", "profs&" + strconv.Itoa(uni.UniversityId) + "#" + page + "#1")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Программы обучения", "progs&" + strconv.Itoa(uni.UniversityId) + "#" + page + "#1")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подобрать программу обучения", "findProg&" + strconv.Itoa(uni.UniversityId) + "#" + page + "#1")),
+		tgbotapi.NewInlineKeyboardRow(makeBackButton("back#" + page)),
 		tgbotapi.NewInlineKeyboardRow(mainButton),
 	)
 
@@ -165,22 +166,23 @@ func makeBackButton(data string) tgbotapi.InlineKeyboardButton {
 	return tgbotapi.NewInlineKeyboardButtonData("<< Назад", data)
 }
 
-func makeFacsMenu(facsNum int, facs []*Faculty, pages []int) tgbotapi.InlineKeyboardMarkup {
+func makeFacsMenu(facsNum int, facs []*Faculty, pages []string) tgbotapi.InlineKeyboardMarkup {
 	uniId := facs[0].UniversityId
 	unisPage := pages[0]
 	facsPage := pages[1]
 
 	var facsButtons [][]tgbotapi.InlineKeyboardButton
 	for _, fac := range facs {
-		facsButtons = append(facsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(fac.Name, "getFac&" + strconv.Itoa(fac.FacultyId) + "#" + strconv.Itoa(unisPage) + "#" + strconv.Itoa(facsPage))))
+		facsButtons = append(facsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(fac.Name, "getFac&" + strconv.Itoa(fac.FacultyId) + "#" + unisPage + "#" + facsPage)))
 	}
 
-	paginator := makePaginator(facsNum, 5, facsPage, "facs&" + strconv.Itoa(uniId) + "#" + strconv.Itoa(unisPage))
+	facsPageNum, _ := strconv.Atoi(facsPage)
+	paginator := makePaginator(facsNum, 5, facsPageNum, "facs&" + strconv.Itoa(uniId) + "#" + unisPage)
 
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 	fullButtons = append(fullButtons, facsButtons...)
 	fullButtons = append(fullButtons, paginator)
-	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton("backUni&" + strconv.Itoa(uniId) + "#" + strconv.Itoa(unisPage))), tgbotapi.NewInlineKeyboardRow(mainButton))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton("getUni&" + strconv.Itoa(uniId) + "#" + unisPage)), tgbotapi.NewInlineKeyboardRow(mainButton))
 
 	facsFullMenu := tgbotapi.NewInlineKeyboardMarkup(
 		fullButtons...
@@ -189,7 +191,7 @@ func makeFacsMenu(facsNum int, facs []*Faculty, pages []int) tgbotapi.InlineKeyb
 	return facsFullMenu
 }
 
-func makeFacMenu(fac Faculty, pages []int) tgbotapi.InlineKeyboardMarkup {
+func makeFacMenu(fac Faculty, pages []string) tgbotapi.InlineKeyboardMarkup {
 	uniId := fac.UniversityId
 	unisPage := pages[0]
 	facsPage := pages[1]
@@ -198,10 +200,10 @@ func makeFacMenu(fac Faculty, pages []int) tgbotapi.InlineKeyboardMarkup {
 	if fac.Site != "" && !strings.Contains(fac.Site, " ") {
 		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт факультета", fac.Site)))
 	}
-	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Профили", "profs&" + strconv.Itoa(fac.FacultyId) + "#" + strconv.Itoa(unisPage) + "#" + strconv.Itoa(facsPage) + "#1")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Программы обучения", "progs&" + strconv.Itoa(fac.FacultyId) + "#" + strconv.Itoa(unisPage) + "#" + strconv.Itoa(facsPage) + "#1")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подобрать программу обучения", "findProg&" + strconv.Itoa(fac.FacultyId) + "#" + strconv.Itoa(unisPage) + "#" + strconv.Itoa(facsPage) + "#1")),
-		tgbotapi.NewInlineKeyboardRow(makeBackButton("backFacs&" + strconv.Itoa(uniId) + "#" + strconv.Itoa(unisPage) + "#" + strconv.Itoa(facsPage))),
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Профили", "profs&" + strconv.Itoa(fac.FacultyId) + "#" + unisPage + "#" + facsPage + "#1")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Программы обучения", "progs&" + strconv.Itoa(fac.FacultyId) + "#" + unisPage + "#" + facsPage + "#1")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подобрать программу обучения", "findProg&" + strconv.Itoa(fac.FacultyId) + "#" + unisPage + "#" + facsPage + "#1")),
+		tgbotapi.NewInlineKeyboardRow(makeBackButton("facs&" + strconv.Itoa(uniId) + "#" + unisPage + "#" + facsPage)),
 		tgbotapi.NewInlineKeyboardRow(mainButton),
 	)
 
@@ -212,13 +214,14 @@ func makeFacMenu(fac Faculty, pages []int) tgbotapi.InlineKeyboardMarkup {
 	return uniFullMenu
 }
 
-func makeUnisMenu(unisNum int, unis []*University, curPage int) tgbotapi.InlineKeyboardMarkup {
+func makeUnisMenu(unisNum int, unis []*University, curPage string) tgbotapi.InlineKeyboardMarkup {
 	var unisButtons [][]tgbotapi.InlineKeyboardButton
 	for _, uni := range unis {
-		unisButtons = append(unisButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(uni.Name, "getUni&" + strconv.Itoa(uni.UniversityId) + "#" + strconv.Itoa(curPage))))
+		unisButtons = append(unisButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(uni.Name, "getUni&" + strconv.Itoa(uni.UniversityId) + "#" + curPage)))
 	}
 
-	paginator := makePaginator(unisNum, 5, curPage, "findUniPage")
+	curPageNum, _ := strconv.Atoi(curPage)
+	paginator := makePaginator(unisNum, 5, curPageNum, "findUniPage")
 
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 	fullButtons = append(fullButtons, unisButtons...)
@@ -232,13 +235,14 @@ func makeUnisMenu(unisNum int, unis []*University, curPage int) tgbotapi.InlineK
 	return unisFullMenu
 }
 
-func makeProfsMenu(profsNum int, profs []*Profile, pagesPattern string, backPattern string, curPage int) tgbotapi.InlineKeyboardMarkup {
+func makeProfsMenu(profsNum int, profs []*Profile, pagesPattern string, backPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
 	var profsButtons [][]tgbotapi.InlineKeyboardButton
 	for _, prof := range profs {
-		profsButtons = append(profsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(makeProfOrSpecCode(prof.ProfileId) + " " + prof.Name, "specs&" + strconv.Itoa(prof.ProfileId) + pagesPattern + "#" + strconv.Itoa(curPage) + "#1")))
+		profsButtons = append(profsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(makeProfOrSpecCode(prof.ProfileId) + " " + prof.Name, "specs&" + strconv.Itoa(prof.ProfileId) + pagesPattern + "#" + curPage + "#1")))
 	}
 
-	paginator := makePaginator(profsNum, 5, curPage, "profs" + pagesPattern)
+	curPageNum, _ := strconv.Atoi(curPage)
+	paginator := makePaginator(profsNum, 5, curPageNum, "profs" + pagesPattern)
 
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 	fullButtons = append(fullButtons, profsButtons...)
@@ -252,22 +256,44 @@ func makeProfsMenu(profsNum int, profs []*Profile, pagesPattern string, backPatt
 	return profsFullMenu
 }
 
-func makeSpecsMenu(specsNum int, specs []*Speciality, pagesPattern string, backPattern string, progsPattern string, curPage int) tgbotapi.InlineKeyboardMarkup {
+func makeSpecsMenu(specsNum int, specs []*Speciality, pagesPattern string, backPattern string, progsPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
 	var specsButtons [][]tgbotapi.InlineKeyboardButton
 	for _, spec := range specs {
-		specsButtons = append(specsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(makeProfOrSpecCode(spec.SpecialityId) + " " + spec.Name, "progs&" + strconv.Itoa(spec.SpecialityId) + progsPattern + "#" + strconv.Itoa(curPage) + "#1")))
+		specsButtons = append(specsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(makeProfOrSpecCode(spec.SpecialityId) + " " + spec.Name, "progs&" + strconv.Itoa(spec.SpecialityId) + progsPattern + "#" + curPage + "#1")))
 	}
 
-	paginator := makePaginator(specsNum, 5, curPage, "specs" + pagesPattern)
+	curPageNum, _ := strconv.Atoi(curPage)
+	paginator := makePaginator(specsNum, 5, curPageNum, "specs" + pagesPattern)
 
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 	fullButtons = append(fullButtons, specsButtons...)
 	fullButtons = append(fullButtons, paginator)
 	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)), tgbotapi.NewInlineKeyboardRow(mainButton))
 
-	profsFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+	specsFullMenu := tgbotapi.NewInlineKeyboardMarkup(
 		fullButtons...
 	)
 
-	return profsFullMenu
+	return specsFullMenu
+}
+
+func makeProgsMenu(progsNum int, progs []*Program, pagesPattern string, backPattern string, progPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
+	var progsButtons [][]tgbotapi.InlineKeyboardButton
+	for _, prog := range progs {
+		progsButtons = append(progsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(prog.Name, "getProg&" + prog.ProgramId.String() + progPattern)))
+	}
+
+	curPageNum, _ := strconv.Atoi(curPage)
+	paginator := makePaginator(progsNum, 5, curPageNum, "progs" + pagesPattern)
+
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	fullButtons = append(fullButtons, progsButtons...)
+	fullButtons = append(fullButtons, paginator)
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)), tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	progsFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return progsFullMenu
 }

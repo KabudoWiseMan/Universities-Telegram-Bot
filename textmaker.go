@@ -29,7 +29,7 @@ func makeTextUni(uni University) string {
 		res += "\n\n" + uni.Description
 	}
 
-	ratingQS := getUniQSRateFromDb(uni.UniversityId)
+	ratingQS := getUniQSRateFromDb(strconv.Itoa(uni.UniversityId))
 	if ratingQS != "" {
 		res += "\n\n*Рейтинг QS:* " + ratingQS
 	}
@@ -125,6 +125,15 @@ func makeTextSpecs(specs []*Speciality) string {
 			bachelorStr = "Специалитет"
 		}
 		res += "*" + makeProfOrSpecCode(spec.SpecialityId) + "* " + spec.Name + " *" + bachelorStr + "*\n\n"
+	}
+
+	return res[:len(res) - 2]
+}
+
+func makeTexProgs(progs []*Program) string {
+	var res string
+	for _, prog := range progs {
+		res += prog.Name + " *" + makeProfOrSpecCode(prog.SpecialityId) + "*\n\n"
 	}
 
 	return res[:len(res) - 2]

@@ -104,12 +104,11 @@ func main() {
 					text, specsMenu := handleSpecsRequest(data)
 					msg.Text = text
 					msg.ReplyMarkup = &specsMenu
+				} else if strings.Contains(data, "progs") {
+					text, progsMenu := handleProgsRequest(data)
+					msg.Text = text
+					msg.ReplyMarkup = &progsMenu
 				}
-				//else if strings.Contains(data, "progs") {
-				//	text, progsMenu := handleProgsRequest(data)
-				//	msg.Text = text
-				//	msg.ReplyMarkup = &progsMenu
-				//}
 			}
 
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Done"))
