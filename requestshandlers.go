@@ -314,8 +314,59 @@ func handleProgsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 		text += "Программы обучения по специальности *" + makeProfOrSpecCode(spec.SpecialityId) + "* " + spec.Name + ":\n\n"
 	}
 
-	text += makeTexProgs(progs)
+	text += makeTextProgs(progs)
 	progsMenu := makeProgsMenu(progsNum, progs, pagesPattern, backPattern, "#" + strings.Join(pages, "#"), curPage)
 
 	return text, progsMenu
+}
+
+func handleProgRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+	pages := takePages(data)
+	unisPage := pages[0]
+	progId := takeId(data)
+	prog := getProgInfoFromDb(progId)
+
+	facIdStr := strconv.Itoa(prog.FacultyId)
+
+	var text, progsPage string
+	backPattern := "#" + unisPage
+
+	if len(pages) % 2 == 0 {
+		uni := getUniOfFacFromDb(facIdStr)
+		backPattern = "&" + strconv.Itoa(uni.UniversityId) + backPattern
+		text = "*" + uni.Name + "*\n\n"
+
+		if len(pages) == 4 {
+			profsPage := pages[1]
+			specsPage := pages[2]
+			progsPage = pages[3]
+
+			backPattern = "&" + strconv.Itoa(prog.SpecialityId) + backPattern + "#" + profsPage + "#" + specsPage
+		} else {
+			progsPage = pages[1]
+		}
+	} else {
+		facsPage := pages[1]
+		fac := getFacFromDb(facIdStr)
+		backPattern = "&" + facIdStr + backPattern + "#" + facsPage
+		text = "*" + fac.Name + "*\n\n"
+
+		if len(pages) == 5 {
+			profsPage := pages[2]
+			specsPage := pages[3]
+			progsPage = pages[4]
+
+			backPattern = "&" + strconv.Itoa(prog.SpecialityId) + backPattern + "#" + profsPage + "#" + specsPage
+		} else {
+			progsPage = pages[2]
+		}
+	}
+
+	backPattern += "#" + progsPage
+	backPattern = "progs" + backPattern
+
+	text += "Программа обучения: " + makeTextProg(prog)
+	progMenu := makeProgMenu(backPattern)
+
+	return text, progMenu
 }

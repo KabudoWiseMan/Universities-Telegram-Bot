@@ -1080,7 +1080,7 @@ func searchProgInfo2(node *html.Node, programId uuid.UUID, subjs map[string]int)
 											log.Println("couldn't convers Min ege points, got: " + splitted[1])
 										}
 										if isEntrance {
-											testName := strings.Join(splitted[:len(splitted) - 1], " ")
+											testName := strings.TrimSpace(strings.Join(splitted[:len(splitted) - 1], " "))
 											if _, ok := testNames[testName]; ok {
 												continue
 											}

@@ -297,3 +297,10 @@ func makeProgsMenu(progsNum int, progs []*Program, pagesPattern string, backPatt
 
 	return progsFullMenu
 }
+
+func makeProgMenu(backPattern string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)),
+		tgbotapi.NewInlineKeyboardRow(mainButton),
+	)
+}

@@ -108,6 +108,10 @@ func main() {
 					text, progsMenu := handleProgsRequest(data)
 					msg.Text = text
 					msg.ReplyMarkup = &progsMenu
+				} else if strings.Contains(data, "getProg") {
+					text, progMenu := handleProgRequest(data)
+					msg.Text = text
+					msg.ReplyMarkup = &progMenu
 				}
 			}
 
@@ -146,8 +150,6 @@ func main() {
 			}
 
 			bot.Send(msg)
-
-			//bot.Send(tgbotapi.NewMessage(chatID, "Я не знаю, что вам на это ответить"))
 		}
 	}
 

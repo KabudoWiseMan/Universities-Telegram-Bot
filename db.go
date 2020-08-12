@@ -1097,3 +1097,63 @@ func getFacSpecProgsPageFromDb(facId string, specId string, offset string) []*Pr
 		" LIMIT 5 OFFSET " + offset + ";"
 	return getProgsInfoFromDb(query)
 }
+
+func getProgInfoFromDb(progId string) ProgramInfo {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	var prog ProgramInfo
+	query := "SELECT pr.program_id, pr.program_num, pr.name, pr.description, pr.free_places, pr.paid_places, pr.fee::numeric::int8, pr.free_pass_points, pr.paid_pass_points, pr.study_form, pr.study_language, pr.study_base, pr.study_years, pr.faculty_id, pr.speciality_id, s2.name, s2.bachelor, COALESCE(l.ege, '') as eges, COALESCE(l2.entrs, '') as entrs FROM program pr " +
+		"LEFT JOIN (" +
+		"SELECT m.program_id, string_agg(s.name || ' ' || m.min_points::text, E'\\n') as ege FROM min_ege_points m " +
+		"JOIN subject s ON (m.subject_id = s.subject_id) " +
+		"WHERE m.program_id = '" + progId + "' " +
+		"GROUP BY m.program_id" +
+		") l ON (pr.program_id = l.program_id) " +
+		"LEFT JOIN (" +
+		"SELECT et.program_id, string_agg(et.test_name || ' ' || et.min_points::text, E'\\n') as entrs FROM entrance_test et " +
+		"WHERE et.program_id = '" + progId + "' " +
+		"GROUP BY et.program_id" +
+		") l2 ON (pr.program_id = l2.program_id) " +
+		"LEFT JOIN speciality s2 ON (pr.speciality_id = s2.speciality_id) " +
+		"WHERE pr.program_id = '" + progId + "';"
+	err = db.QueryRow(query).Scan(&prog.ProgramId, &prog.ProgramNum, &prog.Name, &prog.Description, &prog.FreePlaces, &prog.PaidPlaces, &prog.Fee, &prog.FreePassPoints, &prog.PaidPassPoints, &prog.StudyForm, &prog.StudyLanguage, &prog.StudyBase, &prog.StudyYears, &prog.FacultyId, &prog.SpecialityId, &prog.SpecialityName, &prog.Bachelor, &prog.EGEs, &prog.EntranceTests)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return prog
+}
+
+func getUniOfFacFromDb(facId string) University {
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		log.Fatal("Couldn't connect to db")
+	}
+	defer db.Close()
+
+	var university_id int
+	var name, description, site, email, adress, phone string
+	var military_dep, dormitary bool
+	err = db.QueryRow("SELECT u.* FROM university u JOIN faculty f ON (u.university_id = f.university_id) WHERE faculty_id = " + facId + ";").Scan(&university_id, &name, &description, &site, &email, &adress, &phone, &military_dep, &dormitary)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	uni := University{
+		UniversityId: university_id,
+		Name: name,
+		Description: description,
+		Site: site,
+		Email: email,
+		Adress: adress,
+		Phone: phone,
+		MilitaryDep: military_dep,
+		Dormitary: dormitary,
+	}
+
+	return uni
+}

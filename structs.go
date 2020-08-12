@@ -55,6 +55,28 @@ type Program struct {
 	SpecialityId int
 }
 
+type ProgramInfo struct {
+	ProgramId uuid.UUID
+	ProgramNum int
+	Name string
+	Description string
+	FreePlaces int
+	PaidPlaces int
+	Fee int
+	FreePassPoints int
+	PaidPassPoints int
+	StudyForm string
+	StudyLanguage string
+	StudyBase string
+	StudyYears string
+	FacultyId int
+	SpecialityId int
+	SpecialityName string
+	Bachelor bool
+	EGEs string
+	EntranceTests string
+}
+
 type MinEgePoints struct {
 	ProgramId uuid.UUID
 	SubjectId int
