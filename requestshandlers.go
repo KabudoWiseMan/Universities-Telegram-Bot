@@ -52,6 +52,11 @@ func takeUniQuery(data string) string {
 	return splitted[0]
 }
 
+func makeDbErrorResponseData(err error, backPattern string) (string, tgbotapi.InlineKeyboardMarkup) {
+	log.Println("data base error:", err)
+	return "Простите, произошла ошибка" + makeEmoji(CryingEmoji), makeMainBackMenu(backPattern)
+}
+
 func handleBackRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
 	if user.State == RatingQSState {
 		text, rateQSMenu := handleRatingQSRequest(db, data)
@@ -73,9 +78,15 @@ func handleBackRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotap
 func handleUniRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	page := takePage(data)
 	uniId := takeId(data)
-	uni := getUniFromDb(db, uniId)
+	uni, err := getUniFromDb(db, uniId)
+	if err != nil {
+		return makeDbErrorResponseData(err, "")
+	}
 
-	ratingQS := getUniQSRateFromDb(db, uniId)
+	ratingQS, err := getUniQSRateFromDb(db, uniId)
+	if err != nil {
+		return makeDbErrorResponseData(err, "")
+	}
 	text := makeTextUni(uni, ratingQS)
 	uniMenu := makeUniMenu(uni, page)
 	return text, uniMenu
@@ -87,10 +98,16 @@ func handleRatingQSRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyb
 	text := "*Международный рейтинг вузов QS*\n\n" +
 		"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*\n\n"
 
-	unisQS := getUnisQSPageFromDb(db, makeOffset(page))
+	unisQS, err := getUnisQSPageFromDb(db, makeOffset(page))
+	if err != nil {
+		return makeDbErrorResponseData(err, "")
+	}
 	text += makeTextUnisQS(unisQS)
 
-	unisQSNum := getUnisQSNumFromDb(db)
+	unisQSNum, err := getUnisQSNumFromDb(db)
+	if err != nil {
+		return makeDbErrorResponseData(err, "")
+	}
 	rateQSMenu := makeRatingQsMenu(unisQSNum, unisQS, page)
 
 	return text, rateQSMenu
@@ -99,16 +116,26 @@ func handleRatingQSRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyb
 func handleFacsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	pages := takePages(data)
 	uniId := takeId(data)
+	backPattern := "getUni&" + uniId + "#" + pages[0]
 
-	uni := getUniFromDb(db, uniId)
+	uni, err := getUniFromDb(db, uniId)
+	if err != nil {
+		return makeDbErrorResponseData(err, backPattern)
+	}
 	text := "*" + uni.Name + "*\n\n" +
 		"Факультеты:\n\n"
 
-	facs := getFacsPageFromDb(db, uniId, makeOffset(pages[1]))
+	facs, err := getFacsPageFromDb(db, uniId, makeOffset(pages[1]))
+	if err != nil {
+		return makeDbErrorResponseData(err, backPattern)
+	}
 	text += makeTextFacs(facs)
 
-	facsNum := getFacsNumFromDb(db, uniId)
-	facsMenu := makeFacsMenu(facsNum, facs, pages)
+	facsNum, err := getFacsNumFromDb(db, uniId)
+	if err != nil {
+		return makeDbErrorResponseData(err, backPattern)
+	}
+	facsMenu := makeFacsMenu(facsNum, facs, backPattern, pages)
 
 	return text, facsMenu
 }
@@ -116,7 +143,10 @@ func handleFacsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboard
 func handleFacRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	pages := takePages(data)
 	facId := takeId(data)
-	fac := getFacFromDb(db, facId)
+	fac, err := getFacFromDb(db, facId)
+	if err != nil {
+		return makeDbErrorResponseData(err, "")
+	}
 
 	text := makeTextFac(fac)
 	facMenu := makeFacMenu(fac, pages)
@@ -127,7 +157,10 @@ func handleFindUniRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeybo
 	query := takeUniQuery(data)
 	page := takePage(data)
 
-	unisNum := getFindUnisNumFromDb(db, query)
+	unisNum, err := getFindUnisNumFromDb(db, query)
+	if err != nil {
+		return makeDbErrorResponseData(err, "")
+	}
 	if unisNum == 0 {
 		text := "По запросу *\"" + query + "\"* ничего не найдено " + makeEmoji(CryingEmoji) + "\n\n" +
 			"Возможно нужно ввести полное название университета " + makeEmoji(WinkEmoji)
@@ -136,7 +169,10 @@ func handleFindUniRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeybo
 
 	text := "Результаты поиска по запросу *\"" + query + "\"*:\n\n"
 
-	unis := findUnisInDb(db, query, makeOffset(page))
+	unis, err := findUnisInDb(db, query, makeOffset(page))
+	if err != nil {
+		return makeDbErrorResponseData(err, "")
+	}
 	text += makeTextUnis(unis)
 
 	unisMenu := makeUnisMenu(unisNum, unis, "findUniPage", "", page)
@@ -159,25 +195,43 @@ func handleProfsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboar
 		facsPage := pages[1]
 		curPage = pages[2]
 
-		fac := getFacFromDb(db, uniOrFacId)
+		fac, err := getFacFromDb(db, uniOrFacId)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 		text = "*" + fac.Name + "*\n\n" +
 			"Профили:\n\n"
 
-		profs = getFacProfsPageFromDb(db, uniOrFacId, makeOffset(curPage))
+		profs, err = getFacProfsPageFromDb(db, uniOrFacId, makeOffset(curPage))
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 
-		profsNum = getFacProfsNumFromDb(db, uniOrFacId)
+		profsNum, err = getFacProfsNumFromDb(db, uniOrFacId)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 
 		pagesPattern += "#" + facsPage
 		backPattern = "getFac&" + backPattern + "#" + unisPage + "#" + facsPage
 	} else {
 		curPage = pages[1]
-		uni := getUniFromDb(db, uniOrFacId)
+		uni, err := getUniFromDb(db, uniOrFacId)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 		text = "*" + uni.Name + "*\n\n" +
 			"Профили:\n\n"
 
-		profs = getUniProfsPageFromDb(db, uniOrFacId, makeOffset(curPage))
+		profs, err = getUniProfsPageFromDb(db, uniOrFacId, makeOffset(curPage))
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 
-		profsNum = getUniProfsNumFromDb(db, uniOrFacId)
+		profsNum, err = getUniProfsNumFromDb(db, uniOrFacId)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 		backPattern = "getUni&" + backPattern + "#" + unisPage
 	}
 
@@ -194,7 +248,10 @@ func handleSpecsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboar
 	profId := ids[0]
 	uniOrFacId := ids[1]
 
-	prof := getProfFromDb(db, profId)
+	prof, err := getProfFromDb(db, profId)
+	if err != nil {
+		return makeDbErrorResponseData(err, "")
+	}
 
 	var text, profsPage, curPage string
 	var specs []*Speciality
@@ -208,11 +265,20 @@ func handleSpecsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboar
 		profsPage = pages[2]
 		curPage = pages[3]
 
-		fac := getFacFromDb(db, uniOrFacId)
+		fac, err := getFacFromDb(db, uniOrFacId)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 		text = "*" + fac.Name + "*\n\n"
 
-		specs = getFacSpecsPageFromDb(db, uniOrFacId, profId, makeOffset(curPage))
-		specsNum = getFacSpecsNumFromDb(db, uniOrFacId, profId)
+		specs, err = getFacSpecsPageFromDb(db, uniOrFacId, profId, makeOffset(curPage))
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
+		specsNum, err = getFacSpecsNumFromDb(db, uniOrFacId, profId)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 
 		progsPattern += "#" + facsPage
 		pagesPattern += "#" + facsPage
@@ -221,11 +287,20 @@ func handleSpecsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboar
 		profsPage = pages[1]
 		curPage = pages[2]
 
-		uni := getUniFromDb(db, uniOrFacId)
+		uni, err := getUniFromDb(db, uniOrFacId)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 		text = "*" + uni.Name + "*\n\n"
 
-		specs = getUniSpecsPageFromDb(db, uniOrFacId, profId, makeOffset(curPage))
-		specsNum = getUniSpecsNumFromDb(db, uniOrFacId, profId)
+		specs, err = getUniSpecsPageFromDb(db, uniOrFacId, profId, makeOffset(curPage))
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
+		specsNum, err = getUniSpecsNumFromDb(db, uniOrFacId, profId)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 	}
 
 	pagesPattern += "#" + profsPage
@@ -258,22 +333,40 @@ func handleProgsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboar
 			facsPage := pages[1]
 			curPage = pages[2]
 
-			fac := getFacFromDb(db, uniOrFacId)
+			fac, err := getFacFromDb(db, uniOrFacId)
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
 			text = "*" + fac.Name + "*\n\n"
 
-			progs = getFacProgsPageFromDb(db, uniOrFacId, makeOffset(curPage))
-			progsNum = getFacProgsNumFromDb(db, uniOrFacId)
+			progs, err = getFacProgsPageFromDb(db, uniOrFacId, makeOffset(curPage))
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
+			progsNum, err = getFacProgsNumFromDb(db, uniOrFacId)
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
 
 			pagesPattern += "#" + facsPage
 			backPattern = "getFac&" + backPattern + "#" + facsPage
 		} else {
 			curPage = pages[1]
 
-			uni := getUniFromDb(db, uniOrFacId)
+			uni, err := getUniFromDb(db, uniOrFacId)
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
 			text = "*" + uni.Name + "*\n\n"
 
-			progs = getUniProgsPageFromDb(db, uniOrFacId, makeOffset(curPage))
-			progsNum = getUniProgsNumFromDb(db, uniOrFacId)
+			progs, err = getUniProgsPageFromDb(db, uniOrFacId, makeOffset(curPage))
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
+			progsNum, err = getUniProgsNumFromDb(db, uniOrFacId)
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
 
 			backPattern = "getUni&" + backPattern
 		}
@@ -282,7 +375,10 @@ func handleProgsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboar
 	} else {
 		uniOrFacId := ids[1]
 		specId := ids[0]
-		spec := getSpecFromDb(db, specId)
+		spec, err := getSpecFromDb(db, specId)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 
 		var profsPage, specsPage string
 
@@ -295,11 +391,20 @@ func handleProgsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboar
 			specsPage = pages[3]
 			curPage = pages[4]
 
-			fac := getFacFromDb(db, uniOrFacId)
+			fac, err := getFacFromDb(db, uniOrFacId)
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
 			text = "*" + fac.Name + "*\n\n"
 
-			progs = getFacSpecProgsPageFromDb(db, uniOrFacId, specId, makeOffset(curPage))
-			progsNum = getFacSpecProgsNumFromDb(db, uniOrFacId, specId)
+			progs, err = getFacSpecProgsPageFromDb(db, uniOrFacId, specId, makeOffset(curPage))
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
+			progsNum, err = getFacSpecProgsNumFromDb(db, uniOrFacId, specId)
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
 
 			pagesPattern += "#" + facsPage
 			backPattern += "#" + facsPage
@@ -308,11 +413,20 @@ func handleProgsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboar
 			specsPage = pages[2]
 			curPage = pages[3]
 
-			uni := getUniFromDb(db, uniOrFacId)
+			uni, err := getUniFromDb(db, uniOrFacId)
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
 			text = "*" + uni.Name + "*\n\n"
 
-			progs = getUniSpecProgsPageFromDb(db, uniOrFacId, specId, makeOffset(curPage))
-			progsNum = getUniSpecProgsNumFromDb(db, uniOrFacId, specId)
+			progs, err = getUniSpecProgsPageFromDb(db, uniOrFacId, specId, makeOffset(curPage))
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
+			progsNum, err = getUniSpecProgsNumFromDb(db, uniOrFacId, specId)
+			if err != nil {
+				return makeDbErrorResponseData(err, "")
+			}
 		}
 
 		pagesPattern += "#" + profsPage + "#" + specsPage
@@ -331,7 +445,10 @@ func handleProgRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboard
 	pages := takePages(data)
 	unisPage := pages[0]
 	progId := takeId(data)
-	prog := getProgInfoFromDb(db, progId)
+	prog, err := getProgInfoFromDb(db, progId)
+	if err != nil {
+		return makeDbErrorResponseData(err, "")
+	}
 
 	facIdStr := strconv.Itoa(prog.FacultyId)
 
@@ -339,7 +456,10 @@ func handleProgRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboard
 	backPattern := "#" + unisPage
 
 	if len(pages) % 2 == 0 {
-		uni := getUniOfFacFromDb(db, facIdStr)
+		uni, err := getUniOfFacFromDb(db, facIdStr)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 		backPattern = "&" + strconv.Itoa(uni.UniversityId) + backPattern
 		text = "*" + uni.Name + "*\n\n"
 
@@ -354,7 +474,10 @@ func handleProgRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboard
 		}
 	} else {
 		facsPage := pages[1]
-		fac := getFacFromDb(db, facIdStr)
+		fac, err := getFacFromDb(db, facIdStr)
+		if err != nil {
+			return makeDbErrorResponseData(err, "")
+		}
 		backPattern = "&" + facIdStr + backPattern + "#" + facsPage
 		text = "*" + fac.Name + "*\n\n"
 
@@ -382,7 +505,10 @@ func handleUnisCompRequest(db *sql.DB, user *UserInfo) (string, tgbotapi.InlineK
 	text := "Введите один или несколько критериев для получения подборки университетов\n"
 
 	if len(user.Eges) != 0 {
-		subjs := getSubjsMapFromDb(db)
+		subjs, err := getSubjsMapFromDb(db)
+		if err != nil {
+			return makeDbErrorResponseData(err, "uni")
+		}
 		text += "\n*ЕГЭ:*\n" + makeTextEges(user.Eges, subjs, "    ")
 	}
 
@@ -391,16 +517,25 @@ func handleUnisCompRequest(db *sql.DB, user *UserInfo) (string, tgbotapi.InlineK
 	}
 
 	if user.City != 0 {
-		city := getCityNameFromDb(db, user.City)
+		city, err := getCityNameFromDb(db, user.City)
+		if err != nil {
+			return makeDbErrorResponseData(err, "uni")
+		}
 		text += "\n*Город:* " + city
 	}
 
 	if user.ProfileId != 0 {
 		if user.SpecialityId != 0 {
-			spec := getSpecFromDb(db, strconv.Itoa(user.SpecialityId))
+			spec, err := getSpecFromDb(db, strconv.Itoa(user.SpecialityId))
+			if err != nil {
+				return makeDbErrorResponseData(err, "uni")
+			}
 			text += "\n*Специальность:* " + spec.Name + " (" + makeProfOrSpecCode(user.SpecialityId) + ")"
 		} else {
-			prof := getProfFromDb(db, strconv.Itoa(user.ProfileId))
+			prof, err := getProfFromDb(db, strconv.Itoa(user.ProfileId))
+			if err != nil {
+				return makeDbErrorResponseData(err, "uni")
+			}
 			text += "\n*Профиль:* " + prof.Name + " (" + makeProfOrSpecCode(user.ProfileId) + ")"
 		}
 	}
@@ -428,29 +563,46 @@ func handleChangeOrClearRequest(db *sql.DB, data string, user *UserInfo) (string
 	page := takePage(data)
 	text := "Измените или сбросьте"
 
+	var backPattern string
 	var subjs map[int]string
 	switch state {
 	case FeeState:
+		backPattern = "uni"
 		text += " цену"
 	case CityState:
+		backPattern = "uni"
 		text += " город"
 	case ProfileState:
+		backPattern = "uni"
 		if user.SpecialityId != 0 {
 			text += " профиль/специальность"
 		} else {
 			text += " профиль"
 		}
 	case EgeState:
-		subjs := getSubjsMapFromDb(db)
+		backPattern = "ege#" + page
+		subjs, err := getSubjsMapFromDb(db)
+		if err != nil {
+			return makeDbErrorResponseData(err, backPattern)
+		}
 		text += " ваши ЕГЭ\n\nВыбрано:\n" + makeTextEges(user.Eges, subjs,  "")
 	case SubjState:
-		subjs = getSubjsMapFromDb(db)
+		backPattern = "chOrCl&" + strconv.Itoa(EgeState) + "#" + page
+		var err error
+		subjs, err = getSubjsMapFromDb(db)
+		if err != nil {
+			return makeDbErrorResponseData(err, backPattern)
+		}
 		subjId, _ := strconv.Atoi(ids[1])
 		user.LastSubj = subjId
-		text += " ЕГЭ по предмету *" + getSubjNameFromDb(db, subjId) + "*"
+		subjName, err := getSubjNameFromDb(db, subjId)
+		if err != nil {
+			return makeDbErrorResponseData(err, backPattern)
+		}
+		text += " ЕГЭ по предмету *" + subjName + "*"
 	}
 	
-	changeMenu := makeChangeOrClearMenu(state, user, subjs, page)
+	changeMenu := makeChangeOrClearMenu(state, user, subjs, backPattern, page)
 
 	return text, changeMenu
 }
@@ -465,8 +617,14 @@ func handleCitiesRequest(db *sql.DB, data string, user *UserInfo) (string, tgbot
 	} else {
 		backPattern = "chOrCl&" + strconv.Itoa(CityState)
 	}
-	cities := getCitiesFromDb(db, makeOffset(page))
-	citiesNum := getCitiesNumFromDb(db)
+	cities, err := getCitiesFromDb(db, makeOffset(page))
+	if err != nil {
+		return makeDbErrorResponseData(err, backPattern)
+	}
+	citiesNum, err := getCitiesNumFromDb(db)
+	if err != nil {
+		return makeDbErrorResponseData(err, backPattern)
+	}
 	citiesMenu := makeCitiesMenu(citiesNum, cities, backPattern, page)
 
 	return text, citiesMenu
@@ -482,9 +640,15 @@ func handleProfilesRequest(db *sql.DB, data string, user *UserInfo) (string, tgb
 	} else {
 		backPattern = "chOrCl&" + strconv.Itoa(ProfileState)
 	}
-	profs := getProfsPageFromDb(db, makeOffset(page))
+	profs, err := getProfsPageFromDb(db, makeOffset(page))
+	if err != nil {
+		return makeDbErrorResponseData(err, backPattern)
+	}
 	text += makeTextProfs(profs)
-	profsNum := getProfsNumFromDb(db)
+	profsNum, err := getProfsNumFromDb(db)
+	if err != nil {
+		return makeDbErrorResponseData(err, backPattern)
+	}
 	profsMenu := makeProfsPageMenu(profsNum, profs, backPattern, page)
 
 	return text, profsMenu
@@ -516,9 +680,15 @@ func handleSpecialitiesRequest(db *sql.DB, data string) (string, tgbotapi.Inline
 		backPattern = "chOrCl&" + strconv.Itoa(ProfileState)
 	}
 
-	specs := getSpecsPageFromDb(db, makeOffset(curPage), profId)
+	specs, err := getSpecsPageFromDb(db, makeOffset(curPage), profId)
+	if err != nil {
+		return makeDbErrorResponseData(err, backPattern)
+	}
 	text += makeTextSpecs(specs)
-	specsNum := getSpecsNumFromDb(db, profId)
+	specsNum, err := getSpecsNumFromDb(db, profId)
+	if err != nil {
+		return makeDbErrorResponseData(err, backPattern)
+	}
 	specsMenu := makeSpecsPageMenu(specsNum, specs, profId, pagesPattern, backPattern, curPage)
 
 	return text, specsMenu
@@ -533,13 +703,22 @@ func handleEgesRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotap
 		text = "*Выберите ваши ЕГЭ*\n\n"
 	} else {
 		isEges = true
-		subjs := getSubjsMapFromDb(db)
+		subjs, err := getSubjsMapFromDb(db)
+		if err != nil {
+			return makeDbErrorResponseData(err, "uni")
+		}
 		text = "*Выберите или измените ваши ЕГЭ*\n\nУже выбрано:\n"
 		text += makeTextEges(user.Eges, subjs,  "")
 	}
 
-	subjs := getSubjsFromDb(db, makeOffset(page), user)
-	subjsNum := getSubjsNumFromDb(db, user)
+	subjs, err := getSubjsFromDb(db, makeOffset(page), user)
+	if err != nil {
+		return makeDbErrorResponseData(err, "uni")
+	}
+	subjsNum, err := getSubjsNumFromDb(db, user)
+	if err != nil {
+		return makeDbErrorResponseData(err, "uni")
+	}
 	egesMenu := makeEgesMenu(subjsNum, subjs, isEges, page)
 
 	return text, egesMenu
@@ -558,9 +737,12 @@ func handleSubjRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 func handleSearchUniRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
 	page := takePage(data)
 
-	innerQuery := makeSearchInnerQueryForDb(db, user)
+	innerQuery := makeSearchInnerQueryForDb(user)
 
-	unisNum := getSearchUnisNumFromDb(db, innerQuery)
+	unisNum, err := getSearchUnisNumFromDb(db, innerQuery)
+	if err != nil {
+		makeDbErrorResponseData(err, "uni")
+	}
 	log.Println("Num:", unisNum)
 	if unisNum == 0 {
 		text := "Не удалось подобрать вузы по выбранным критериям " + makeEmoji(CryingEmoji)
@@ -569,10 +751,56 @@ func handleSearchUniRequest(db *sql.DB, data string, user *UserInfo) (string, tg
 
 	text := "Результаты подбора вузов:\n\n"
 
-	unis := searchUnisInDb(db, innerQuery, makeOffset(page))
+	unis, err := searchUnisInDb(db, innerQuery, makeOffset(page))
+	if err != nil {
+		return makeDbErrorResponseData(err, "uni")
+	}
 	text += makeTextUnis(unis)
 
 	unisMenu := makeUnisMenu(unisNum, unis, "search", "uni", page)
 
 	return text, unisMenu
+}
+
+func handleChangePointsRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+	page := takePage(data)
+	subjName, err := getSubjNameFromDb(db, user.LastSubj)
+	backPatter := "chOrCl&" + strconv.Itoa(SubjState) + "&" + strconv.Itoa(user.LastSubj) + "#" + page
+	if err != nil {
+		return makeDbErrorResponseData(err, backPatter)
+	}
+	text := "Введите баллы ЕГЭ *" + subjName + "*"
+	mainBackMenu := makeMainBackMenu(backPatter)
+	return text, mainBackMenu
+}
+
+func handleClearMenu(db *sql.DB, data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+	state, _ := strconv.Atoi(takeId(data))
+	var text string
+	var changeMenu tgbotapi.InlineKeyboardMarkup
+	switch state {
+	case EgeState:
+		user.Eges = nil
+		text, changeMenu = handleEgesRequest(db, "ege#1", user)
+	case FeeState:
+		user.Fee = math.MaxUint64
+		text, changeMenu = handleUnisCompRequest(db, user)
+	case CityState:
+		user.City = 0
+		text, changeMenu = handleUnisCompRequest(db, user)
+	case ProfileState:
+		user.ProfileId = 0
+		text, changeMenu = handleUnisCompRequest(db, user)
+	case SpecialityState:
+		user.SpecialityId = 0
+		text, changeMenu = handleUnisCompRequest(db, user)
+	case SubjState:
+		user.DeleteEge()
+		text, changeMenu = handleChangeOrClearRequest(db, "chOrCl&" + strconv.Itoa(EgeState) + "#1", user)
+	case UniState:
+		user.Clear()
+		text, changeMenu = handleUnisCompRequest(db, user)
+	}
+
+	return text, changeMenu
 }

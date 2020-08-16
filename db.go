@@ -36,7 +36,7 @@ func closeDb(db io.Closer) {
 	}
 }
 
-func insertUnis(db *sql.DB, unis []*University) {
+func insertUnis(db *sql.DB, unis []*University) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, uni := range unis {
@@ -54,11 +54,13 @@ func insertUnis(db *sql.DB, unis []*University) {
 
 	sqlStmt := fmt.Sprintf("INSERT INTO university (university_id, name, description, site, email, adress, phone, military_dep, dormitary) VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
-		log.Println(err)
+		return err
 	}
+	
+	return nil
 }
 
-func insertProfsNSpecs(db *sql.DB, profs []*Profile, specs []*Speciality) {
+func insertProfsNSpecs(db *sql.DB, profs []*Profile, specs []*Speciality) error {
 	var valueStringsProfs []string
 	var valueArgsProfs []interface{}
 	for i, p := range profs {
@@ -69,7 +71,7 @@ func insertProfsNSpecs(db *sql.DB, profs []*Profile, specs []*Speciality) {
 
 	sqlStmt := fmt.Sprintf("INSERT INTO profile VALUES %s;", strings.Join(valueStringsProfs, ","))
 	if _, err := db.Exec(sqlStmt, valueArgsProfs...); err != nil {
-		log.Println(err)
+		return err
 	}
 
 	var valueStringsSpecs []string
@@ -85,16 +87,18 @@ func insertProfsNSpecs(db *sql.DB, profs []*Profile, specs []*Speciality) {
 
 	sqlStmt2 := fmt.Sprintf("INSERT INTO speciality VALUES %s;", strings.Join(valueStringsSpecs, ","))
 	if _, err := db.Exec(sqlStmt2, valueArgsSpecs...); err != nil {
-		log.Println(err)
+		return err
 	}
+	
+	return nil
 }
 
-func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) []*University {
+func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) ([]*University, error) {
 	var unis []*University
 	if withNames {
 		rows, err := db.Query("SELECT university_id, name FROM university;")
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		defer rows.Close()
 
@@ -103,7 +107,7 @@ func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) []*University {
 			var name string
 			err := rows.Scan(&university_id, &name)
 			if err != nil {
-				log.Fatal(err)
+				return nil, err
 			}
 
 			uni := &University{
@@ -114,12 +118,12 @@ func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) []*University {
 		}
 		err = rows.Err()
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 	} else {
 		rows, err := db.Query("SELECT university_id FROM university;")
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		defer rows.Close()
 
@@ -127,7 +131,7 @@ func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) []*University {
 			var university_id int
 			err := rows.Scan(&university_id)
 			if err != nil {
-				log.Fatal(err)
+				return nil, err
 			}
 
 			uni := &University{
@@ -137,14 +141,14 @@ func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) []*University {
 		}
 		err = rows.Err()
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 	}
 
-	return unis
+	return unis, nil
 }
 
-func insertFacs(db *sql.DB, facs []*Faculty) {
+func insertFacs(db *sql.DB, facs []*Faculty) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, fac := range facs {
@@ -161,14 +165,16 @@ func insertFacs(db *sql.DB, facs []*Faculty) {
 
 	sqlStmt := fmt.Sprintf("INSERT INTO faculty VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
-		log.Println(err)
+		return err
 	}
+	
+	return nil
 }
 
-func getFacsIdsFromDb(db *sql.DB) []*Faculty {
+func getFacsIdsFromDb(db *sql.DB) ([]*Faculty, error) {
 	rows, err := db.Query("SELECT faculty_id FROM faculty;")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -177,7 +183,7 @@ func getFacsIdsFromDb(db *sql.DB) []*Faculty {
 		var faculty_id int
 		err := rows.Scan(&faculty_id)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		fac := &Faculty{
@@ -187,13 +193,13 @@ func getFacsIdsFromDb(db *sql.DB) []*Faculty {
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return facs
+	return facs, nil
 }
 
-func insertSubjs(db *sql.DB, subjs map[string]int) {
+func insertSubjs(db *sql.DB, subjs map[string]int) error {
 	var valueStringsSubjs []string
 	var valueArgsSubjs []interface{}
 	i := 0
@@ -206,14 +212,16 @@ func insertSubjs(db *sql.DB, subjs map[string]int) {
 
 	sqlStmt := fmt.Sprintf("INSERT INTO subject VALUES %s;", strings.Join(valueStringsSubjs, ","))
 	if _, err := db.Exec(sqlStmt, valueArgsSubjs...); err != nil {
-		log.Println(err)
+		return err
 	}
+
+	return nil
 }
 
-func getRevSubjsMapFromDb(db *sql.DB) map[string]int {
+func getRevSubjsMapFromDb(db *sql.DB) (map[string]int, error) {
 	subjsRows, err := db.Query("SELECT * FROM subject;")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer subjsRows.Close()
 
@@ -223,20 +231,20 @@ func getRevSubjsMapFromDb(db *sql.DB) map[string]int {
 		var name string
 		err := subjsRows.Scan(&subject_id, &name)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		subjs[name] = subject_id
 	}
 	err = subjsRows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return subjs
+	return subjs, nil
 }
 
-func insertProgs(tx *sql.Tx, progs []*Program) {
+func insertProgs(tx *sql.Tx, progs []*Program) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, prog := range progs {
@@ -260,12 +268,14 @@ func insertProgs(tx *sql.Tx, progs []*Program) {
 
 	sqlStmt := fmt.Sprintf("INSERT INTO program VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := tx.Exec(sqlStmt, valueArgs...); err != nil {
-		log.Println(err)
 		tx.Rollback()
+		return err
 	}
+
+	return nil
 }
 
-func insertMinPoints(tx *sql.Tx, minEgePoints []*MinEgePoints) {
+func insertMinPoints(tx *sql.Tx, minEgePoints []*MinEgePoints) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, minPoints := range minEgePoints {
@@ -277,12 +287,14 @@ func insertMinPoints(tx *sql.Tx, minEgePoints []*MinEgePoints) {
 
 	sqlStmt := fmt.Sprintf("INSERT INTO min_ege_points VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := tx.Exec(sqlStmt, valueArgs...); err != nil {
-		log.Println(err)
 		tx.Rollback()
+		return err
 	}
+
+	return nil
 }
 
-func insertEntrTests(tx *sql.Tx, entrTests []*EntranceTest) {
+func insertEntrTests(tx *sql.Tx, entrTests []*EntranceTest) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, entrTest := range entrTests {
@@ -294,15 +306,17 @@ func insertEntrTests(tx *sql.Tx, entrTests []*EntranceTest) {
 
 	sqlStmt := fmt.Sprintf("INSERT INTO entrance_test VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := tx.Exec(sqlStmt, valueArgs...); err != nil {
-		log.Println(err)
 		tx.Rollback()
+		return err
 	}
+
+	return nil
 }
 
-func insertProgsNInfo(db *sql.DB, progs []*Program, minEgePoints []*MinEgePoints, entrTests []*EntranceTest) {
+func insertProgsNInfo(db *sql.DB, progs []*Program, minEgePoints []*MinEgePoints, entrTests []*EntranceTest) error {
 	tx, err := db.Begin()
 	if err != nil {
-		log.Fatal("Couldn't begin the transaction")
+		return err
 	}
 
 	insertProgs(tx, progs)
@@ -314,14 +328,16 @@ func insertProgsNInfo(db *sql.DB, progs []*Program, minEgePoints []*MinEgePoints
 
 	err = tx.Commit()
 	if err != nil {
-		log.Println("couldn't commit the transaction")
+		return err
 	}
+
+	return nil
 }
 
-func getSpecsIdsFromDb(db *sql.DB) []*Speciality {
+func getSpecsIdsFromDb(db *sql.DB) ([]*Speciality, error) {
 	rows, err := db.Query("SELECT speciality_id FROM speciality;")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -330,7 +346,7 @@ func getSpecsIdsFromDb(db *sql.DB) []*Speciality {
 		var speciality_id int
 		err := rows.Scan(&speciality_id)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		spec := &Speciality{
@@ -340,16 +356,16 @@ func getSpecsIdsFromDb(db *sql.DB) []*Speciality {
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return specs
+	return specs, nil
 }
 
-func getUniIdFromDb(db *sql.DB, uniSite string) int {
+func getUniIdFromDb(db *sql.DB, uniSite string) (int, error) {
 	rows, err := db.Query("SELECT university_id FROM university WHERE site LIKE" + "'%www." + uniSite + ".ru%' LIMIT 1;")
 	if err != nil {
-		log.Fatal(err)
+		return -1, err
 	}
 	defer rows.Close()
 
@@ -357,37 +373,37 @@ func getUniIdFromDb(db *sql.DB, uniSite string) int {
 	for rows.Next() {
 		err := rows.Scan(&university_id)
 		if err != nil {
-			log.Fatal(err)
+			return -1, err
 		}
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return -1, err
 	}
 
 	if university_id == 0 {
 		rows2, err := db.Query("SELECT university_id FROM university WHERE site LIKE" + "'%" + uniSite + ".ru%' LIMIT 1;")
 		if err != nil {
-			log.Fatal(err)
+			return -1, err
 		}
 		defer rows2.Close()
 
 		for rows2.Next() {
 			err := rows2.Scan(&university_id)
 			if err != nil {
-				log.Fatal(err)
+				return -1, err
 			}
 		}
 		err = rows2.Err()
 		if err != nil {
-			log.Fatal(err)
+			return -1, err
 		}
 	}
 
-	return university_id
+	return university_id, nil
 }
 
-func insertRatingQS(db *sql.DB, ratingQS []*RatingQS) {
+func insertRatingQS(db *sql.DB, ratingQS []*RatingQS) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, uniRatingQs := range ratingQS {
@@ -399,11 +415,13 @@ func insertRatingQS(db *sql.DB, ratingQS []*RatingQS) {
 
 	sqlStmt := fmt.Sprintf("INSERT INTO rating_qs VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
-		log.Println(err)
+		return err
 	}
+
+	return nil
 }
 
-func insertCities(db *sql.DB, cities map[int]string) {
+func insertCities(db *sql.DB, cities map[int]string) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	i := 0
@@ -416,21 +434,23 @@ func insertCities(db *sql.DB, cities map[int]string) {
 
 	sqlStmt := fmt.Sprintf("INSERT INTO city VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
-		log.Println(err)
+		return err
 	}
+
+	return nil
 }
 
-func getCountFromDb(db *sql.DB, from string) int {
+func getCountFromDb(db *sql.DB, from string) (int, error) {
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM " + from + ";").Scan(&count)
 	if err != nil {
-		log.Fatal(err)
+		return -1, err
 	}
 
-	return count
+	return count, nil
 }
 
-func getUnisQSNumFromDb(db *sql.DB) int {
+func getUnisQSNumFromDb(db *sql.DB) (int, error) {
 	return getCountFromDb(db, "rating_qs")
 }
 
@@ -445,10 +465,10 @@ func makeQSMark(db *sql.DB, high_mark int, low_mark int) string {
 	return mark
 }
 
-func getUnisQSPageFromDb(db *sql.DB, offset string) []*UniversityQS {
+func getUnisQSPageFromDb(db *sql.DB, offset string) ([]*UniversityQS, error) {
 	rows, err := db.Query("SELECT u.university_id, u.name, rq.high_mark, rq.low_mark FROM university u JOIN rating_qs rq on u.university_id = rq.university_id ORDER BY high_mark LIMIT 5 OFFSET " + offset + ";")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -458,7 +478,7 @@ func getUnisQSPageFromDb(db *sql.DB, offset string) []*UniversityQS {
 		var name string
 		err := rows.Scan(&university_id, &name, &high_mark, &low_mark)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		mark := makeQSMark(db, high_mark, low_mark)
@@ -473,56 +493,46 @@ func getUnisQSPageFromDb(db *sql.DB, offset string) []*UniversityQS {
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return universitiesQS
+	return universitiesQS, nil
 }
 
-func getUniFromDb(db *sql.DB, uniId string) University {
-	var university_id int
-	var name, description, site, email, adress, phone string
-	var military_dep, dormitary bool
-	err := db.QueryRow("SELECT university_id, name, description, site, email, adress, phone, military_dep, dormitary FROM university WHERE university_id = " + uniId + ";").Scan(&university_id, &name, &description, &site, &email, &adress, &phone, &military_dep, &dormitary)
+func getUniFromDb(db *sql.DB, uniId string) (*University, error) {
+	uni := &University{}
+	err := db.QueryRow("SELECT university_id, name, description, site, email, adress, phone, military_dep, dormitary FROM university WHERE university_id = " + uniId + ";").Scan(&uni.UniversityId, &uni.Name, &uni.Description, &uni.Site, &uni.Email, &uni.Adress, &uni.Phone, &uni.MilitaryDep, &uni.Dormitary)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	uni := University{
-		UniversityId: university_id,
-		Name: name,
-		Description: description,
-		Site: site,
-		Email: email,
-		Adress: adress,
-		Phone: phone,
-		MilitaryDep: military_dep,
-		Dormitary: dormitary,
-	}
-
-	return uni
+	return uni, nil
 }
 
-func getUniQSRateFromDb(db *sql.DB, uniId string) string {
+func getUniQSRateFromDb(db *sql.DB, uniId string) (string, error) {
 	var high_mark, low_mark int
 	err := db.QueryRow("SELECT high_mark, low_mark FROM rating_qs WHERE university_id = " + uniId + ";").Scan(&high_mark, &low_mark)
 	if err != nil {
-		return ""
+		if err = db.Ping(); err != nil {
+			return "", err
+		}
+
+		return "", nil
 	}
 
 	mark := makeQSMark(db, high_mark, low_mark)
 
-	return mark
+	return mark, nil
 }
 
-func getFacsNumFromDb(db *sql.DB, uniId string) int {
+func getFacsNumFromDb(db *sql.DB, uniId string) (int, error) {
 	return getCountFromDb(db, "faculty WHERE university_id = " + uniId)
 }
 
-func getFacsPageFromDb(db *sql.DB, uniId string, offset string) []*Faculty {
+func getFacsPageFromDb(db *sql.DB, uniId string, offset string) ([]*Faculty, error) {
 	rows, err := db.Query("SELECT faculty_id, name FROM faculty WHERE university_id = " + uniId + " LIMIT 5 OFFSET " + offset)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -532,7 +542,7 @@ func getFacsPageFromDb(db *sql.DB, uniId string, offset string) []*Faculty {
 		var name string
 		err := rows.Scan(&faculty_id, &name)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		uniIdNum, _ := strconv.Atoi(uniId)
@@ -546,42 +556,30 @@ func getFacsPageFromDb(db *sql.DB, uniId string, offset string) []*Faculty {
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return facs
+	return facs, nil
 }
 
-func getFacFromDb(db *sql.DB, facId string) Faculty {
-	var university_id, faculty_id int
-	var name, description, site, email, adress, phone string
-	err := db.QueryRow("SELECT * FROM faculty WHERE faculty_id = " + facId + ";").Scan(&faculty_id, &name, &description, &site, &email, &adress, &phone, &university_id)
+func getFacFromDb(db *sql.DB, facId string) (*Faculty, error) {
+	fac := &Faculty{}
+	err := db.QueryRow("SELECT * FROM faculty WHERE faculty_id = " + facId + ";").Scan(&fac.FacultyId, &fac.Name, &fac.Description, &fac.Site, &fac.Email, &fac.Adress, &fac.Phone, &fac.UniversityId)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	fac := Faculty{
-		FacultyId: faculty_id,
-		Name: name,
-		Description: description,
-		Site: site,
-		Email: email,
-		Adress: adress,
-		Phone: phone,
-		UniversityId: university_id,
-	}
-
-	return fac
+	return fac, nil
 }
 
-func getFindUnisNumFromDb(db *sql.DB, query string) int {
+func getFindUnisNumFromDb(db *sql.DB, query string) (int, error) {
 	return getCountFromDb(db, "university_name_descr_vector WHERE name_descr_vector @@ plainto_tsquery('" + query + "')")
 }
 
-func getUnisIdsNNamesFromDb(db *sql.DB, query string) []*University {
+func getUnisIdsNNamesFromDb(db *sql.DB, query string) ([]*University, error) {
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -591,7 +589,7 @@ func getUnisIdsNNamesFromDb(db *sql.DB, query string) []*University {
 		var name string
 		err := rows.Scan(&university_id, &name)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		uni := &University{
@@ -603,13 +601,13 @@ func getUnisIdsNNamesFromDb(db *sql.DB, query string) []*University {
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return unis
+	return unis, nil
 }
 
-func findUnisInDb(db *sql.DB, query string, offset string) []*University {
+func findUnisInDb(db *sql.DB, query string, offset string) ([]*University, error) {
 	dbQuery := "SELECT u.university_id, u.name FROM university u " +
 		"JOIN (" +
 		"SELECT university_id, ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) " +
@@ -622,7 +620,7 @@ func findUnisInDb(db *sql.DB, query string, offset string) []*University {
 	return getUnisIdsNNamesFromDb(db, dbQuery)
 }
 
-func getUniProfsNumFromDb(db *sql.DB, uniId string) int {
+func getUniProfsNumFromDb(db *sql.DB, uniId string) (int, error) {
 	from := "(" +
 		"SELECT DISTINCT s.profile_id FROM speciality s " +
 		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
@@ -633,10 +631,10 @@ func getUniProfsNumFromDb(db *sql.DB, uniId string) int {
 	return getCountFromDb(db, from)
 }
 
-func getProfsFromDb(db *sql.DB, query string) []*Profile {
+func getProfsFromDb(db *sql.DB, query string) ([]*Profile, error) {
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -646,7 +644,7 @@ func getProfsFromDb(db *sql.DB, query string) []*Profile {
 		var name string
 		err := rows.Scan(&profile_id, &name)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		prof := &Profile{
@@ -658,13 +656,13 @@ func getProfsFromDb(db *sql.DB, query string) []*Profile {
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return profs
+	return profs, nil
 }
 
-func getUniProfsPageFromDb(db *sql.DB, uniId string, offset string) []*Profile {
+func getUniProfsPageFromDb(db *sql.DB, uniId string, offset string) ([]*Profile, error) {
 	query := "SELECT p.* FROM profile p " +
 		"JOIN (" +
 		"SELECT DISTINCT s.profile_id FROM speciality s " +
@@ -677,7 +675,7 @@ func getUniProfsPageFromDb(db *sql.DB, uniId string, offset string) []*Profile {
 	return getProfsFromDb(db, query)
 }
 
-func getFacProfsNumFromDb(db *sql.DB, facId string) int {
+func getFacProfsNumFromDb(db *sql.DB, facId string) (int, error) {
 	from := "(" +
 		"SELECT DISTINCT s.profile_id FROM speciality s " +
 		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
@@ -687,7 +685,7 @@ func getFacProfsNumFromDb(db *sql.DB, facId string) int {
 	return getCountFromDb(db, from)
 }
 
-func getFacProfsPageFromDb(db *sql.DB, facId string, offset string) []*Profile {
+func getFacProfsPageFromDb(db *sql.DB, facId string, offset string) ([]*Profile, error) {
 	query := "SELECT p.* FROM profile p " +
 		"JOIN (" +
 		"SELECT DISTINCT s.profile_id FROM speciality s " +
@@ -699,26 +697,20 @@ func getFacProfsPageFromDb(db *sql.DB, facId string, offset string) []*Profile {
 	return getProfsFromDb(db, query)
 }
 
-func getProfFromDb(db *sql.DB, profId string) Profile {
-	var profile_id int
-	var name string
-	err := db.QueryRow("SELECT * FROM profile WHERE profile_id = " + profId + ";").Scan(&profile_id, &name)
+func getProfFromDb(db *sql.DB, profId string) (*Profile, error) {
+	prof := &Profile{}
+	err := db.QueryRow("SELECT * FROM profile WHERE profile_id = " + profId + ";").Scan(&prof.ProfileId, &prof.Name)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	prof := Profile{
-		ProfileId: profile_id,
-		Name: name,
-	}
-
-	return prof
+	return prof, nil
 }
 
-func getSpecsFromDb(db *sql.DB, query string) []*Speciality {
+func getSpecsFromDb(db *sql.DB, query string) ([]*Speciality, error) {
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -729,7 +721,7 @@ func getSpecsFromDb(db *sql.DB, query string) []*Speciality {
 		var bachelor bool
 		err := rows.Scan(&speciality_id, &name, &bachelor, &profile_id)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		spec := &Speciality{
@@ -743,13 +735,13 @@ func getSpecsFromDb(db *sql.DB, query string) []*Speciality {
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return specs
+	return specs, nil
 }
 
-func getUniSpecsNumFromDb(db *sql.DB, uniId string, profId string) int {
+func getUniSpecsNumFromDb(db *sql.DB, uniId string, profId string) (int, error) {
 	from := "(" +
 		"SELECT DISTINCT s.speciality_id FROM speciality s " +
 		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
@@ -760,7 +752,7 @@ func getUniSpecsNumFromDb(db *sql.DB, uniId string, profId string) int {
 	return getCountFromDb(db, from)
 }
 
-func getUniSpecsPageFromDb(db *sql.DB, uniId string, profId string, offset string) []*Speciality {
+func getUniSpecsPageFromDb(db *sql.DB, uniId string, profId string, offset string) ([]*Speciality, error) {
 	query := "SELECT s.* FROM speciality s " +
 		"JOIN (" +
 		"SELECT DISTINCT s.speciality_id FROM speciality s " +
@@ -773,7 +765,7 @@ func getUniSpecsPageFromDb(db *sql.DB, uniId string, profId string, offset strin
 	return getSpecsFromDb(db, query)
 }
 
-func getFacSpecsNumFromDb(db *sql.DB, facId string, profId string) int {
+func getFacSpecsNumFromDb(db *sql.DB, facId string, profId string) (int, error) {
 	from := "(" +
 		"SELECT DISTINCT s.speciality_id FROM speciality s " +
 		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
@@ -783,7 +775,7 @@ func getFacSpecsNumFromDb(db *sql.DB, facId string, profId string) int {
 	return getCountFromDb(db, from)
 }
 
-func getFacSpecsPageFromDb(db *sql.DB, facId string, profId string, offset string) []*Speciality {
+func getFacSpecsPageFromDb(db *sql.DB, facId string, profId string, offset string) ([]*Speciality, error) {
 	query := "SELECT s.* FROM speciality s " +
 		"JOIN (" +
 		"SELECT DISTINCT s.speciality_id FROM speciality s " +
@@ -795,29 +787,20 @@ func getFacSpecsPageFromDb(db *sql.DB, facId string, profId string, offset strin
 	return getSpecsFromDb(db, query)
 }
 
-func getSpecFromDb(db *sql.DB, specId string) Speciality {
-	var speciality_id, profile_id int
-	var name string
-	var bachelor bool
-	err := db.QueryRow("SELECT * FROM speciality WHERE speciality_id = " + specId + ";").Scan(&speciality_id, &name, &bachelor, &profile_id)
+func getSpecFromDb(db *sql.DB, specId string) (*Speciality, error) {
+	spec := &Speciality{}
+	err := db.QueryRow("SELECT * FROM speciality WHERE speciality_id = " + specId + ";").Scan(&spec.SpecialityId, &spec.Name, &spec.Bachelor, &spec.ProfileId)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	spec := Speciality{
-		SpecialityId: speciality_id,
-		Name: name,
-		Bachelor: bachelor,
-		ProfileId: profile_id,
-	}
-
-	return spec
+	return spec, nil
 }
 
-func getProgsInfoFromDb(db *sql.DB, query string) []*Program {
+func getProgsInfoFromDb(db *sql.DB, query string) ([]*Program, error) {
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -828,7 +811,7 @@ func getProgsInfoFromDb(db *sql.DB, query string) []*Program {
 		var name string
 		err := rows.Scan(&program_id, &name, &speciality_id)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		prog := &Program{
@@ -841,13 +824,13 @@ func getProgsInfoFromDb(db *sql.DB, query string) []*Program {
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return progs
+	return progs, nil
 }
 
-func getUniProgsNumFromDb(db *sql.DB, uniId string) int {
+func getUniProgsNumFromDb(db *sql.DB, uniId string) (int, error) {
 	from := "program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"JOIN university u ON (f.university_id = u.university_id) " +
@@ -855,7 +838,7 @@ func getUniProgsNumFromDb(db *sql.DB, uniId string) int {
 	return getCountFromDb(db, from)
 }
 
-func getUniProgsPageFromDb(db *sql.DB, uniId string, offset string) []*Program {
+func getUniProgsPageFromDb(db *sql.DB, uniId string, offset string) ([]*Program, error) {
 	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"JOIN university u ON (f.university_id = u.university_id) " +
@@ -864,14 +847,14 @@ func getUniProgsPageFromDb(db *sql.DB, uniId string, offset string) []*Program {
 	return getProgsInfoFromDb(db, query)
 }
 
-func getFacProgsNumFromDb(db *sql.DB, facId string) int {
+func getFacProgsNumFromDb(db *sql.DB, facId string) (int, error) {
 	from := "program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId
 	return getCountFromDb(db, from)
 }
 
-func getFacProgsPageFromDb(db *sql.DB, facId string, offset string) []*Program {
+func getFacProgsPageFromDb(db *sql.DB, facId string, offset string) ([]*Program, error) {
 	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId +
@@ -879,7 +862,7 @@ func getFacProgsPageFromDb(db *sql.DB, facId string, offset string) []*Program {
 	return getProgsInfoFromDb(db, query)
 }
 
-func getUniSpecProgsNumFromDb(db *sql.DB, uniId string, specId string) int {
+func getUniSpecProgsNumFromDb(db *sql.DB, uniId string, specId string) (int, error) {
 	from := "program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"JOIN university u ON (f.university_id = u.university_id) " +
@@ -887,7 +870,7 @@ func getUniSpecProgsNumFromDb(db *sql.DB, uniId string, specId string) int {
 	return getCountFromDb(db, from)
 }
 
-func getUniSpecProgsPageFromDb(db *sql.DB, uniId string, specId string, offset string) []*Program {
+func getUniSpecProgsPageFromDb(db *sql.DB, uniId string, specId string, offset string) ([]*Program, error) {
 	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"JOIN university u ON (f.university_id = u.university_id) " +
@@ -896,14 +879,14 @@ func getUniSpecProgsPageFromDb(db *sql.DB, uniId string, specId string, offset s
 	return getProgsInfoFromDb(db, query)
 }
 
-func getFacSpecProgsNumFromDb(db *sql.DB, facId string, specId string) int {
+func getFacSpecProgsNumFromDb(db *sql.DB, facId string, specId string) (int, error) {
 	from := "program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId + " AND pr.speciality_id = " + specId
 	return getCountFromDb(db, from)
 }
 
-func getFacSpecProgsPageFromDb(db *sql.DB, facId string, specId string, offset string) []*Program {
+func getFacSpecProgsPageFromDb(db *sql.DB, facId string, specId string, offset string) ([]*Program, error) {
 	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId + " AND pr.speciality_id = " + specId +
@@ -911,8 +894,8 @@ func getFacSpecProgsPageFromDb(db *sql.DB, facId string, specId string, offset s
 	return getProgsInfoFromDb(db, query)
 }
 
-func getProgInfoFromDb(db *sql.DB, progId string) ProgramInfo {
-	var prog ProgramInfo
+func getProgInfoFromDb(db *sql.DB, progId string) (*ProgramInfo, error) {
+	prog := &ProgramInfo{}
 	query := "SELECT pr.program_id, pr.program_num, pr.name, pr.description, pr.free_places, pr.paid_places, pr.fee::numeric::int8, pr.free_pass_points, pr.paid_pass_points, pr.study_form, pr.study_language, pr.study_base, pr.study_years, pr.faculty_id, pr.speciality_id, s2.name, s2.bachelor, COALESCE(l.ege, '') as eges, COALESCE(l2.entrs, '') as entrs FROM program pr " +
 		"LEFT JOIN (" +
 		"SELECT m.program_id, string_agg(s.name || ' ' || m.min_points::text, E'\\n') as ege FROM min_ege_points m " +
@@ -929,37 +912,31 @@ func getProgInfoFromDb(db *sql.DB, progId string) ProgramInfo {
 		"WHERE pr.program_id = '" + progId + "';"
 	err := db.QueryRow(query).Scan(&prog.ProgramId, &prog.ProgramNum, &prog.Name, &prog.Description, &prog.FreePlaces, &prog.PaidPlaces, &prog.Fee, &prog.FreePassPoints, &prog.PaidPassPoints, &prog.StudyForm, &prog.StudyLanguage, &prog.StudyBase, &prog.StudyYears, &prog.FacultyId, &prog.SpecialityId, &prog.SpecialityName, &prog.Bachelor, &prog.EGEs, &prog.EntranceTests)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return prog
+	return prog, nil
 }
 
-func getUniOfFacFromDb(db *sql.DB, facId string) University {
-	var university_id int
-	var name string
-	err := db.QueryRow("SELECT u.university_id, u.name FROM university u JOIN faculty f ON (u.university_id = f.university_id) WHERE faculty_id = " + facId + ";").Scan(&university_id, &name)
+func getUniOfFacFromDb(db *sql.DB, facId string) (*University, error) {
+	uni := &University{}
+	err := db.QueryRow("SELECT u.university_id, u.name FROM university u JOIN faculty f ON (u.university_id = f.university_id) WHERE faculty_id = " + facId + ";").Scan(&uni.UniversityId, &uni.Name)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	uni := University{
-		UniversityId: university_id,
-		Name: name,
-	}
-
-	return uni
+	return uni, nil
 }
 
-func getCitiesNumFromDb(db *sql.DB) int {
+func getCitiesNumFromDb(db *sql.DB) (int, error) {
 	from := "city"
 	return getCountFromDb(db, from)
 }
 
-func getCitiesFromDb(db *sql.DB, offset string) []*City {
+func getCitiesFromDb(db *sql.DB, offset string) ([]*City, error) {
 	rows, err := db.Query("SELECT * FROM city ORDER BY name LIMIT 5 OFFSET " + offset + ";")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -969,7 +946,7 @@ func getCitiesFromDb(db *sql.DB, offset string) []*City {
 		var name string
 		err := rows.Scan(&city_id, &name)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		city := &City{
@@ -981,46 +958,46 @@ func getCitiesFromDb(db *sql.DB, offset string) []*City {
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return cities
+	return cities, nil
 }
 
-func getCityNameFromDb(db *sql.DB, cityId int) string {
+func getCityNameFromDb(db *sql.DB, cityId int) (string, error) {
 	var name string
 	err := db.QueryRow("SELECT name FROM city WHERE city_id = " + strconv.Itoa(cityId) + ";").Scan(&name)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
-	return name
+	return name, nil
 }
 
-func getProfsNumFromDb(db *sql.DB) int {
+func getProfsNumFromDb(db *sql.DB) (int, error) {
 	from := "profile"
 	return getCountFromDb(db, from)
 }
 
-func getProfsPageFromDb(db *sql.DB, offset string) []*Profile {
+func getProfsPageFromDb(db *sql.DB, offset string) ([]*Profile, error) {
 	query := "SELECT * FROM profile ORDER BY name LIMIT 5 OFFSET " + offset
 	return getProfsFromDb(db, query)
 }
 
-func getSpecsNumFromDb(db *sql.DB, profId string) int {
+func getSpecsNumFromDb(db *sql.DB, profId string) (int, error) {
 	from := "speciality WHERE profile_id = " + profId
 	return getCountFromDb(db, from)
 }
 
-func getSpecsPageFromDb(db *sql.DB, offset string, profId string) []*Speciality {
+func getSpecsPageFromDb(db *sql.DB, offset string, profId string) ([]*Speciality, error) {
 	query := "SELECT * FROM speciality WHERE profile_id = " + profId + " ORDER BY name LIMIT 5 OFFSET " + offset
 	return getSpecsFromDb(db, query)
 }
 
-func getSubjsMapFromDb(db *sql.DB) map[int]string {
+func getSubjsMapFromDb(db *sql.DB) (map[int]string, error) {
 	subjsRows, err := db.Query("SELECT * FROM subject;")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer subjsRows.Close()
 
@@ -1030,20 +1007,20 @@ func getSubjsMapFromDb(db *sql.DB) map[int]string {
 		var name string
 		err := subjsRows.Scan(&subject_id, &name)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		subjs[subject_id] = name
 	}
 	err = subjsRows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return subjs
+	return subjs, nil
 }
 
-func getSubjsNumFromDb(db *sql.DB, user *UserInfo) int {
+func getSubjsNumFromDb(db *sql.DB, user *UserInfo) (int, error) {
 	from := "subject"
 	if len(user.Eges) != 0 {
 		from += " WHERE "
@@ -1059,7 +1036,7 @@ func getSubjsNumFromDb(db *sql.DB, user *UserInfo) int {
 	return getCountFromDb(db, from)
 }
 
-func getSubjsFromDb(db *sql.DB, offset string, user *UserInfo) []*Subject {
+func getSubjsFromDb(db *sql.DB, offset string, user *UserInfo) ([]*Subject, error) {
 	var except string
 	if len(user.Eges) != 0 {
 		except += "WHERE "
@@ -1072,10 +1049,9 @@ func getSubjsFromDb(db *sql.DB, offset string, user *UserInfo) []*Subject {
 		}
 	}
 
-	//log.Println("SELECT * FROM subject " + except + " ORDER BY subject_id LIMIT 5 OFFSET " + offset + ";")
 	subjsRows, err := db.Query("SELECT * FROM subject " + except + " ORDER BY subject_id LIMIT 5 OFFSET " + offset + ";")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer subjsRows.Close()
 
@@ -1085,7 +1061,7 @@ func getSubjsFromDb(db *sql.DB, offset string, user *UserInfo) []*Subject {
 		var name string
 		err := subjsRows.Scan(&subject_id, &name)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		subj := &Subject{
@@ -1097,23 +1073,23 @@ func getSubjsFromDb(db *sql.DB, offset string, user *UserInfo) []*Subject {
 	}
 	err = subjsRows.Err()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return subjs
+	return subjs, nil
 }
 
-func getSubjNameFromDb(db *sql.DB, subjId int) string {
+func getSubjNameFromDb(db *sql.DB, subjId int) (string, error) {
 	var name string
 	err := db.QueryRow("SELECT name FROM subject WHERE subject_id = " + strconv.Itoa(subjId) + ";").Scan(&name)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
-	return name
+	return name, nil
 }
 
-func makeSearchInnerQueryForDb(db *sql.DB, user *UserInfo) string {
+func makeSearchInnerQueryForDb(user *UserInfo) string {
 	var conds []string
 	from := "SELECT DISTINCT u.university_id FROM university u " +
 		"JOIN faculty f ON (u.university_id = f.university_id) " +
@@ -1195,11 +1171,11 @@ func makeSearchInnerQueryForDb(db *sql.DB, user *UserInfo) string {
 	return from + wholeCond
 }
 
-func getSearchUnisNumFromDb(db *sql.DB, from string) int {
+func getSearchUnisNumFromDb(db *sql.DB, from string) (int, error) {
 	return getCountFromDb(db, "(" + from + ") l")
 }
 
-func searchUnisInDb(db *sql.DB, innerQuery string, offset string) []*University {
+func searchUnisInDb(db *sql.DB, innerQuery string, offset string) ([]*University, error) {
 	query := "SELECT u.university_id, u.name FROM university u " +
 		"JOIN (" + innerQuery +
 		") l ON (u.university_id = l.university_id) " +

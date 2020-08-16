@@ -13,7 +13,6 @@ const (
 	SpecialityState = 7
 	EgeState = 8
 	SubjState = 9
-	ProgState = 10
 )
 
 type Ege struct {

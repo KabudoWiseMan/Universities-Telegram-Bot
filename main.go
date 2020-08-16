@@ -3,7 +3,6 @@ package main
 import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,7 +22,7 @@ func isAdmin(chatID int64) bool {
 func main() {
 	bot, err := tgbotapi.NewBotAPI(BotToken)
 	if err != nil {
-		log.Panic(err)
+		log.Panic("couldn't connect to bot", err)
 	}
 	log.Printf("Authorized on account %s\n", bot.Self.UserName)
 
@@ -31,7 +30,7 @@ func main() {
 
 	db, err := connectToDb()
 	if err != nil {
-		log.Println("couldn't connected to data base", err)
+		log.Panic("couldn't connected to data base", err)
 	}
 	log.Println("Successfully connected to data base!")
 	defer closeDb(db)
@@ -61,209 +60,123 @@ func main() {
 				log.Printf("[%s u: %d c: %d] %s\n", update.CallbackQuery.From.UserName, update.CallbackQuery.From.ID, chatID, update.CallbackQuery.Data)
 
 				msg := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID, "")
-				msg.ParseMode = "markdown"
 
 				user := users.User(chatID)
 
+				var menu tgbotapi.InlineKeyboardMarkup
+				var text string
+
 				switch update.CallbackQuery.Data {
 				case "main":
-					//users.Delete(chatID)
 					user.State = NoState
-					msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
+					text = "Добро пожаловать в бота для подбора университета!\n\n" +
 						"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
-					msg.ReplyMarkup = &mainMenu
+					menu = mainMenu
 				case "uni":
 					user.State = UniState
-					text, unisCompilationMenu := handleUnisCompRequest(db, user)
-					msg.Text = text
-					msg.ReplyMarkup = &unisCompilationMenu
+					text, menu = handleUnisCompRequest(db, user)
 				case "fUni":
 					user.State = FindUniState
-					msg.Text = "Введите название университета"
-					mainBackMenu := makeMainBackMenu("")
-					msg.ReplyMarkup = &mainBackMenu
+					text = "Введите название университета"
+					menu = makeMainBackMenu("")
 				case "rate":
 					user.State = RatingQSState
-					text, rateQSMenu := handleRatingQSRequest(db, "rateQSPage#1")
-					msg.Text = text
-					msg.ReplyMarkup = &rateQSMenu
+					text, menu = handleRatingQSRequest(db, "rateQSPage#1")
 				case "dorm":
 					user.Dormatary = !user.Dormatary
-					text, unisCompilationMenu := handleUnisCompRequest(db, user)
-					msg.Text = text
-					msg.ReplyMarkup = &unisCompilationMenu
+					text, menu = handleUnisCompRequest(db, user)
 				case "army":
 					user.MilitaryDep = !user.MilitaryDep
-					text, unisCompilationMenu := handleUnisCompRequest(db, user)
-					msg.Text = text
-					msg.ReplyMarkup = &unisCompilationMenu
+					text, menu = handleUnisCompRequest(db, user)
 				case "entry":
 					user.EntryTest = !user.EntryTest
-					text, unisCompilationMenu := handleUnisCompRequest(db, user)
-					msg.Text = text
-					msg.ReplyMarkup = &unisCompilationMenu
+					text, menu = handleUnisCompRequest(db, user)
 				case "fee":
 					user.State = FeeState
-					msg.Text = "Введите максимальную цену за год обучения"
+					text = "Введите максимальную цену за год обучения"
 					var backPattern string
 					if user.Fee == 0 {
 						backPattern = "uni"
 					} else {
 						backPattern = "chOrCl&" + strconv.Itoa(FeeState)
 					}
-					mainBackMenu := makeMainBackMenu(backPattern)
-					msg.ReplyMarkup = &mainBackMenu
+					menu = makeMainBackMenu(backPattern)
 				default:
 					data := update.CallbackQuery.Data
 					if strings.Contains(data, "rateQSPage") {
-						text, rateQSMenu := handleRatingQSRequest(db, data)
-						msg.Text = text
-						msg.ReplyMarkup = &rateQSMenu
+						text, menu = handleRatingQSRequest(db, data)
 					} else if strings.Contains(data, "getUni") {
-						text, uniMenu := handleUniRequest(db, data)
-						msg.Text = text
-						msg.ReplyMarkup = &uniMenu
+						text, menu = handleUniRequest(db, data)
 					} else if strings.Contains(data, "facs") {
-						text, facsMenu := handleFacsRequest(db, data)
-						msg.Text = text
-						msg.ReplyMarkup = &facsMenu
+						text, menu = handleFacsRequest(db, data)
 					} else if strings.Contains(data, "back") {
-						text, rateQSMenu := handleBackRequest(db, data, user)
-						msg.Text = text
-						msg.ReplyMarkup = &rateQSMenu
+						text, menu = handleBackRequest(db, data, user)
 					} else if strings.Contains(data, "getFac") {
-						text, facMenu := handleFacRequest(db, data)
-						msg.Text = text
-						msg.ReplyMarkup = &facMenu
+						text, menu = handleFacRequest(db, data)
 					} else if strings.Contains(data, "findUniPage") {
-						text, findUniMenu := handleFindUniRequest(db, user.Query + "#" + data)
-						msg.Text = text
-						if len(findUniMenu.InlineKeyboard) != 0 {
-							msg.ReplyMarkup = &findUniMenu
-						}
+						text, menu = handleFindUniRequest(db, user.Query + "#" + data)
 					} else if strings.Contains(data, "profs") {
-						text, profsMenu := handleProfsRequest(db, data)
-						msg.Text = text
-						msg.ReplyMarkup = &profsMenu
+						text, menu = handleProfsRequest(db, data)
 					} else if strings.Contains(data, "specs") {
-						text, specsMenu := handleSpecsRequest(db, data)
-						msg.Text = text
-						msg.ReplyMarkup = &specsMenu
+						text, menu = handleSpecsRequest(db, data)
 					} else if strings.Contains(data, "progs") {
-						text, progsMenu := handleProgsRequest(db, data)
-						msg.Text = text
-						msg.ReplyMarkup = &progsMenu
+						text, menu = handleProgsRequest(db, data)
 					} else if strings.Contains(data, "getProg") {
-						text, progMenu := handleProgRequest(db, data)
-						msg.Text = text
-						msg.ReplyMarkup = &progMenu
+						text, menu = handleProgRequest(db, data)
 					}  else if strings.Contains(data, "setCity") {
 						cityId, _ := strconv.Atoi(takeId(data))
 						user.City = cityId
-						text, unisCompilationMenu := handleUnisCompRequest(db, user)
-						msg.Text = text
-						msg.ReplyMarkup = &unisCompilationMenu
+						text, menu = handleUnisCompRequest(db, user)
 					} else if strings.Contains(data, "city") {
-						text, citiesMenu := handleCitiesRequest(db, data, user)
-						msg.Text = text
-						msg.ReplyMarkup = &citiesMenu
+						text, menu = handleCitiesRequest(db, data, user)
 					} else if strings.Contains(data, "proOrSpe") {
-						text, specOrNotMenu := handleSpecOrNotRequest(data)
-						msg.Text = text
-						msg.ReplyMarkup = &specOrNotMenu
+						text, menu = handleSpecOrNotRequest(data)
 					} else if strings.Contains(data, "setPro") {
 						profId, _ := strconv.Atoi(takeId(data))
 						user.ProfileId = profId
 						user.SpecialityId = 0
-						text, unisCompilationMenu := handleUnisCompRequest(db, user)
-						msg.Text = text
-						msg.ReplyMarkup = &unisCompilationMenu
+						text, menu = handleUnisCompRequest(db, user)
 					} else if strings.Contains(data, "pro") {
-						text, profilesMenu := handleProfilesRequest(db, data, user)
-						msg.Text = text
-						msg.ReplyMarkup = &profilesMenu
+						text, menu = handleProfilesRequest(db, data, user)
 					} else if strings.Contains(data, "setSpe") {
 						ids := takeIds(data)
 						profId, _ := strconv.Atoi(ids[0])
 						specId, _ := strconv.Atoi(ids[1])
 						user.ProfileId = profId
 						user.SpecialityId = specId
-						text, unisCompilationMenu := handleUnisCompRequest(db, user)
-						msg.Text = text
-						msg.ReplyMarkup = &unisCompilationMenu
+						text, menu = handleUnisCompRequest(db, user)
 					} else if strings.Contains(data, "spe") {
-						text, specialitiesMenu := handleSpecialitiesRequest(db, data)
-						msg.Text = text
-						msg.ReplyMarkup = &specialitiesMenu
+						text, menu = handleSpecialitiesRequest(db, data)
 					} else if strings.Contains(data, "chOrCl") {
 						user.State = UniState
-						text, changeOrClearMenu := handleChangeOrClearRequest(db, data, user)
-						msg.Text = text
-						msg.ReplyMarkup = &changeOrClearMenu
+						text, menu = handleChangeOrClearRequest(db, data, user)
 					} else if strings.Contains(data, "setEge") {
 						subjId, _ := strconv.Atoi(takeId(data))
 						user.Eges = append(user.Eges, Ege{SubjId: subjId, MinPoints: 100})
-						text, egesMenu := handleEgesRequest(db, "ege#1", user)
-						msg.Text = text
-						msg.ReplyMarkup = &egesMenu
+						text, menu = handleEgesRequest(db, "ege#1", user)
 					} else if strings.Contains(data, "ege") {
 						user.State = UniState
-						text, egesMenu := handleEgesRequest(db, data, user)
-						msg.Text = text
-						msg.ReplyMarkup = &egesMenu
+						text, menu = handleEgesRequest(db, data, user)
 					} else if strings.Contains(data, "subj") {
 						user.State = EgeState
-						text, subjMenu := handleSubjRequest(data, user)
-						msg.Text = text
-						msg.ReplyMarkup = &subjMenu
+						text, menu = handleSubjRequest(data, user)
 					} else if strings.Contains(data, "chPoints") {
-						page := takePage(data)
-						subjName := getSubjNameFromDb(db, user.LastSubj)
 						user.State = EgeState
-						msg.Text = "Введите баллы ЕГЭ по предмету *" + subjName + "*"
-						mainBackMenu := makeMainBackMenu("chOrCl&" + strconv.Itoa(SubjState) + "&" + strconv.Itoa(user.LastSubj) + "#" + page)
-						msg.ReplyMarkup = &mainBackMenu
+						text, menu = handleChangePointsRequest(db, data, user)
 					} else if strings.Contains(data, "clear") {
-						state, _ := strconv.Atoi(takeId(data))
-						var text string
-						var menu tgbotapi.InlineKeyboardMarkup
-						switch state {
-						case EgeState:
-							user.Eges = nil
-							text, menu = handleEgesRequest(db, "ege#1", user)
-						case FeeState:
-							user.Fee = math.MaxUint64
-							text, menu = handleUnisCompRequest(db, user)
-						case CityState:
-							user.City = 0
-							text, menu = handleUnisCompRequest(db, user)
-						case ProfileState:
-							user.ProfileId = 0
-							text, menu = handleUnisCompRequest(db, user)
-						case SpecialityState:
-							user.SpecialityId = 0
-							text, menu = handleUnisCompRequest(db, user)
-						case SubjState:
-							user.DeleteEge()
-							text, menu = handleChangeOrClearRequest(db, "chOrCl&" + strconv.Itoa(EgeState) + "#1", user)
-						case UniState:
-							user.Clear()
-							text, menu = handleUnisCompRequest(db, user)
-						}
-						msg.Text = text
-						msg.ReplyMarkup = &menu
+						text, menu = handleClearMenu(db, data, user)
 					} else if strings.Contains(data, "search") {
 						user.State = UniState
-						text, searchUniMenu := handleSearchUniRequest(db, data, user)
-						msg.Text = text
-						if len(searchUniMenu.InlineKeyboard) != 0 {
-							msg.ReplyMarkup = &searchUniMenu
-						}
+						text, menu = handleSearchUniRequest(db, data, user)
 					}
 				}
 
-				bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Done"))
+				msg.Text = text
+				msg.ParseMode = "markdown"
+				msg.ReplyMarkup = &menu
+
 				bot.Send(msg)
+				bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Done"))
 			}
 
 			if update.Message != nil {
@@ -277,7 +190,6 @@ func main() {
 				if update.Message.IsCommand() {
 					switch update.Message.Command() {
 					case "start", "help":
-						users.Delete(chatID)
 						msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
 							"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
 						msg.ReplyMarkup = mainMenu

@@ -23,10 +23,13 @@ func makeTextUnis(unis []*University) string {
 	return res[:len(res) - 2]
 }
 
-func makeTextUni(uni University, ratingQS string) string {
+func makeTextUni(uni *University, ratingQS string) string {
 	res := "*" + uni.Name + "*"
 	if uni.Description != "" {
-		res += "\n\n" + uni.Description
+		descriptionForMarkdown := strings.ReplaceAll(uni.Description, "*", "")
+		descriptionForMarkdown = strings.ReplaceAll(descriptionForMarkdown, "[", "\\[")
+		descriptionForMarkdown = strings.ReplaceAll(descriptionForMarkdown, "`", "")
+		res += "\n\n" + descriptionForMarkdown
 	}
 
 	if ratingQS != "" {
@@ -34,14 +37,14 @@ func makeTextUni(uni University, ratingQS string) string {
 	}
 
 	if strings.Contains(uni.Site, " ") {
-		res += "\n\n*Сайты:* " + uni.Site
+		res += "\n\n*Сайты:* " + strings.ReplaceAll(uni.Site, "_", "\\_")
 	}
 
 	if uni.Phone != "" {
 		res += "\n\n*Телефон:* " + uni.Phone
 	}
 	if uni.Email != "" {
-		res += "\n\n*E-mail:* " + uni.Email
+		res += "\n\n*E-mail:* " + strings.ReplaceAll(uni.Email, "_", "\\_")
 	}
 	if uni.Adress != "" {
 		res += "\n\n*Адрес:* " + uni.Adress
@@ -73,21 +76,24 @@ func makeTextFacs(facs []*Faculty) string {
 	return res[:len(res) - 2]
 }
 
-func makeTextFac(fac Faculty) string {
+func makeTextFac(fac *Faculty) string {
 	res := "*" + fac.Name + "*"
 	if fac.Description != "" {
-		res += "\n\n" + fac.Description
+		descriptionForMarkdown := strings.ReplaceAll(fac.Description, "*", "")
+		descriptionForMarkdown = strings.ReplaceAll(descriptionForMarkdown, "[", "\\[")
+		descriptionForMarkdown = strings.ReplaceAll(descriptionForMarkdown, "`", "")
+		res += "\n\n" + descriptionForMarkdown
 	}
 
 	if strings.Contains(fac.Site, " ") {
-		res += "\n\n*Сайты:* " + fac.Site
+		res += "\n\n*Сайты:* " + strings.ReplaceAll(fac.Site, "_", "\\_")
 	}
 
 	if fac.Phone != "" {
 		res += "\n\n*Телефон:* " + fac.Phone
 	}
 	if fac.Email != "" {
-		res += "\n\n*E-mail:* " + fac.Email
+		res += "\n\n*E-mail:* " + strings.ReplaceAll(fac.Email, "_", "\\_")
 	}
 	if fac.Adress != "" {
 		res += "\n\n*Адрес:* " + fac.Adress
@@ -138,7 +144,7 @@ func makeTextProgs(progs []*Program) string {
 	return res[:len(res) - 2]
 }
 
-func makeTextProg(prog ProgramInfo) string {
+func makeTextProg(prog *ProgramInfo) string {
 	res := "*" + prog.Name + "*"
 
 	res += "\n\n*Специальность:* " + prog.SpecialityName + " (" + makeProfOrSpecCode(prog.SpecialityId) + ")"
@@ -207,7 +213,10 @@ func makeTextProg(prog ProgramInfo) string {
 	}
 
 	if prog.Description != "" {
-		res += "\n\n" + prog.Description
+		descriptionForMarkdown := strings.ReplaceAll(prog.Description, "*", "")
+		descriptionForMarkdown = strings.ReplaceAll(descriptionForMarkdown, "[", "\\[")
+		descriptionForMarkdown = strings.ReplaceAll(descriptionForMarkdown, "`", "")
+		res += "\n\n" + descriptionForMarkdown
 	}
 
 	return res
