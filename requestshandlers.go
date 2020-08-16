@@ -129,7 +129,7 @@ func handleFindUniRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	if unisNum == 0 {
 		text := "По запросу *\"" + query + "\"* ничего не найдено " + makeEmoji(CryingEmoji) + "\n\n" +
 			"Возможно нужно ввести полное название университета " + makeEmoji(WinkEmoji)
-		return text, tgbotapi.NewInlineKeyboardMarkup()
+		return text, tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(mainButton))
 	}
 
 	text := "Результаты поиска по запросу *\"" + query + "\"*:\n\n"
@@ -542,6 +542,7 @@ func handleSubjRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 	text := "Введите баллы или оставьте поиск только предмету"
 	page := takePage(data)
 	subjId := takeId(data)
+	user.LastSubj, _ = strconv.Atoi(subjId)
 	pointsOrNotMenu := makePointsOrNotMenu(page, subjId)
 
 	return text, pointsOrNotMenu

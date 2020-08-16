@@ -54,7 +54,7 @@ func main() {
 
 			switch update.CallbackQuery.Data {
 			case "main":
-				users.Delete(chatID)
+				//users.Delete(chatID)
 				msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
 					"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
 				msg.ReplyMarkup = &mainMenu
@@ -96,7 +96,13 @@ func main() {
 				user := users.User(chatID)
 				user.State = FeeState
 				msg.Text = "Введите максимальную цену за год обучения"
-				mainBackMenu := makeMainBackMenu("uni")
+				var backPattern string
+				if user.Fee == 0 {
+					backPattern = "uni"
+				} else {
+					backPattern = "chOrCl&" + strconv.Itoa(FeeState)
+				}
+				mainBackMenu := makeMainBackMenu(backPattern)
 				msg.ReplyMarkup = &mainBackMenu
 			default:
 				data := update.CallbackQuery.Data
@@ -192,6 +198,7 @@ func main() {
 					msg.ReplyMarkup = &specialitiesMenu
 				} else if strings.Contains(data, "chOrCl") {
 					user := users.User(chatID)
+					user.State = UniState
 					text, changeOrClearMenu := handleChangeOrClearRequest(data, user)
 					msg.Text = text
 					msg.ReplyMarkup = &changeOrClearMenu
@@ -204,11 +211,13 @@ func main() {
 					msg.ReplyMarkup = &egesMenu
 				} else if strings.Contains(data, "ege") {
 					user := users.User(chatID)
+					user.State = UniState
 					text, egesMenu := handleEgesRequest(data, user)
 					msg.Text = text
 					msg.ReplyMarkup = &egesMenu
 				} else if strings.Contains(data, "subj") {
 					user := users.User(chatID)
+					user.State = EgeState
 					text, subjMenu := handleSubjRequest(data, user)
 					msg.Text = text
 					msg.ReplyMarkup = &subjMenu
@@ -219,16 +228,6 @@ func main() {
 					user.State = EgeState
 					msg.Text = "Введите баллы ЕГЭ по предмету *" + subjName + "*"
 					mainBackMenu := makeMainBackMenu("chOrCl&" + strconv.Itoa(SubjState) + "&" + strconv.Itoa(user.LastSubj) + "#" + page)
-					msg.ReplyMarkup = &mainBackMenu
-				} else if strings.Contains(data, "points") {
-					subjId, _ := strconv.Atoi(takeId(data))
-					page := takePage(data)
-					subjName := getSubjNameFromDb(subjId)
-					user := users.User(chatID)
-					user.LastSubj = subjId
-					user.State = EgeState
-					msg.Text = "Введите баллы ЕГЭ по предмету *" + subjName + "*"
-					mainBackMenu := makeMainBackMenu("subj&" + strconv.Itoa(subjId) + "#" + page)
 					msg.ReplyMarkup = &mainBackMenu
 				} else if strings.Contains(data, "clear") {
 					state, _ := strconv.Atoi(takeId(data))
@@ -299,7 +298,11 @@ func main() {
 
 			user := users.User(chatID)
 
-			if user.State == FeeState {
+			if user.State == UniState {
+				msg.Text = "Что-то здесь не так, проверьте, что вы нажали нужную кнопку" + makeEmoji(WinkEmoji)
+			} else if user.State == RatingQSState {
+				msg.Text = "Поиск здесь недоступен"
+			} else if user.State == FeeState {
 				feeStr := update.Message.Text
 				fee, err := strconv.ParseUint(feeStr, 10, 64)
 				if err != nil {

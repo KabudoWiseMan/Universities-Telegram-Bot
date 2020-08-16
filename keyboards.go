@@ -542,7 +542,6 @@ func makeEgesMenu(subjsNum int, subjs []*Subject, isEges bool, curPage string) t
 func makePointsOrNotMenu(curPage string, subjId string) tgbotapi.InlineKeyboardMarkup {
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 
-	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Ввести баллы", "points&" + subjId + "#" + curPage)))
 	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Искать только по предмету", "setEge&" + subjId)))
 	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton("ege#" + curPage)))
 	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
