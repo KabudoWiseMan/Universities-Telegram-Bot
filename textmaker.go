@@ -23,13 +23,12 @@ func makeTextUnis(unis []*University) string {
 	return res[:len(res) - 2]
 }
 
-func makeTextUni(uni University) string {
+func makeTextUni(uni University, ratingQS string) string {
 	res := "*" + uni.Name + "*"
 	if uni.Description != "" {
 		res += "\n\n" + uni.Description
 	}
 
-	ratingQS := getUniQSRateFromDb(strconv.Itoa(uni.UniversityId))
 	if ratingQS != "" {
 		res += "\n\n*Рейтинг QS:* " + ratingQS
 	}
@@ -214,9 +213,8 @@ func makeTextProg(prog ProgramInfo) string {
 	return res
 }
 
-func makeTextEges(eges []Ege, indent string) string {
+func makeTextEges(eges []Ege, subjs map[int]string, indent string) string {
 	var res string
-	subjs := getSubjsMapFromDb()
 	for _, ege := range eges {
 		res += indent + subjs[ege.SubjId] + " " + strconv.Itoa(int(ege.MinPoints)) + "\n"
 	}

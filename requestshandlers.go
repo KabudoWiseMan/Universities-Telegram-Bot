@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 	"log"
 	"math"
@@ -51,15 +52,15 @@ func takeUniQuery(data string) string {
 	return splitted[0]
 }
 
-func handleBackRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleBackRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
 	if user.State == RatingQSState {
-		text, rateQSMenu := handleRatingQSRequest(data)
+		text, rateQSMenu := handleRatingQSRequest(db, data)
 		return text, rateQSMenu
 	} else if user.State == FindUniState {
-		text, findUniMenu := handleFindUniRequest(user.Query + "#" + data)
+		text, findUniMenu := handleFindUniRequest(db, user.Query + "#" + data)
 		return text, findUniMenu
 	} else if user.State == UniState {
-		text, searchUniMenu := handleSearchUniRequest(data, user)
+		text, searchUniMenu := handleSearchUniRequest(db, data, user)
 		return text, searchUniMenu
 	}
 
@@ -69,63 +70,64 @@ func handleBackRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 	return text, mainMenu
 }
 
-func handleUniRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleUniRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	page := takePage(data)
 	uniId := takeId(data)
-	uni := getUniFromDb(uniId)
+	uni := getUniFromDb(db, uniId)
 
-	text := makeTextUni(uni)
+	ratingQS := getUniQSRateFromDb(db, uniId)
+	text := makeTextUni(uni, ratingQS)
 	uniMenu := makeUniMenu(uni, page)
 	return text, uniMenu
 }
 
-func handleRatingQSRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleRatingQSRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	page := takePage(data)
 
 	text := "*Международный рейтинг вузов QS*\n\n" +
 		"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*\n\n"
 
-	unisQS := getUnisQSPageFromDb(makeOffset(page))
+	unisQS := getUnisQSPageFromDb(db, makeOffset(page))
 	text += makeTextUnisQS(unisQS)
 
-	unisQSNum := getUnisQSNumFromDb()
+	unisQSNum := getUnisQSNumFromDb(db)
 	rateQSMenu := makeRatingQsMenu(unisQSNum, unisQS, page)
 
 	return text, rateQSMenu
 }
 
-func handleFacsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleFacsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	pages := takePages(data)
 	uniId := takeId(data)
 
-	uni := getUniFromDb(uniId)
+	uni := getUniFromDb(db, uniId)
 	text := "*" + uni.Name + "*\n\n" +
 		"Факультеты:\n\n"
 
-	facs := getFacsPageFromDb(uniId, makeOffset(pages[1]))
+	facs := getFacsPageFromDb(db, uniId, makeOffset(pages[1]))
 	text += makeTextFacs(facs)
 
-	facsNum := getFacsNumFromDb(uniId)
+	facsNum := getFacsNumFromDb(db, uniId)
 	facsMenu := makeFacsMenu(facsNum, facs, pages)
 
 	return text, facsMenu
 }
 
-func handleFacRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleFacRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	pages := takePages(data)
 	facId := takeId(data)
-	fac := getFacFromDb(facId)
+	fac := getFacFromDb(db, facId)
 
 	text := makeTextFac(fac)
 	facMenu := makeFacMenu(fac, pages)
 	return text, facMenu
 }
 
-func handleFindUniRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleFindUniRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	query := takeUniQuery(data)
 	page := takePage(data)
 
-	unisNum := getFindUnisNumFromDb(query)
+	unisNum := getFindUnisNumFromDb(db, query)
 	if unisNum == 0 {
 		text := "По запросу *\"" + query + "\"* ничего не найдено " + makeEmoji(CryingEmoji) + "\n\n" +
 			"Возможно нужно ввести полное название университета " + makeEmoji(WinkEmoji)
@@ -134,7 +136,7 @@ func handleFindUniRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 
 	text := "Результаты поиска по запросу *\"" + query + "\"*:\n\n"
 
-	unis := findUnisInDb(query, makeOffset(page))
+	unis := findUnisInDb(db, query, makeOffset(page))
 	text += makeTextUnis(unis)
 
 	unisMenu := makeUnisMenu(unisNum, unis, "findUniPage", "", page)
@@ -142,7 +144,7 @@ func handleFindUniRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	return text, unisMenu
 }
 
-func handleProfsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleProfsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	pages := takePages(data)
 	unisPage := pages[0]
 	uniOrFacId := takeId(data)
@@ -157,25 +159,25 @@ func handleProfsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 		facsPage := pages[1]
 		curPage = pages[2]
 
-		fac := getFacFromDb(uniOrFacId)
+		fac := getFacFromDb(db, uniOrFacId)
 		text = "*" + fac.Name + "*\n\n" +
 			"Профили:\n\n"
 
-		profs = getFacProfsPageFromDb(uniOrFacId, makeOffset(curPage))
+		profs = getFacProfsPageFromDb(db, uniOrFacId, makeOffset(curPage))
 
-		profsNum = getFacProfsNumFromDb(uniOrFacId)
+		profsNum = getFacProfsNumFromDb(db, uniOrFacId)
 
 		pagesPattern += "#" + facsPage
 		backPattern = "getFac&" + backPattern + "#" + unisPage + "#" + facsPage
 	} else {
 		curPage = pages[1]
-		uni := getUniFromDb(uniOrFacId)
+		uni := getUniFromDb(db, uniOrFacId)
 		text = "*" + uni.Name + "*\n\n" +
 			"Профили:\n\n"
 
-		profs = getUniProfsPageFromDb(uniOrFacId, makeOffset(curPage))
+		profs = getUniProfsPageFromDb(db, uniOrFacId, makeOffset(curPage))
 
-		profsNum = getUniProfsNumFromDb(uniOrFacId)
+		profsNum = getUniProfsNumFromDb(db, uniOrFacId)
 		backPattern = "getUni&" + backPattern + "#" + unisPage
 	}
 
@@ -185,14 +187,14 @@ func handleProfsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	return text, profsMenu
 }
 
-func handleSpecsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleSpecsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	pages := takePages(data)
 	unisPage := pages[0]
 	ids := takeIds(data)
 	profId := ids[0]
 	uniOrFacId := ids[1]
 
-	prof := getProfFromDb(profId)
+	prof := getProfFromDb(db, profId)
 
 	var text, profsPage, curPage string
 	var specs []*Speciality
@@ -206,11 +208,11 @@ func handleSpecsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 		profsPage = pages[2]
 		curPage = pages[3]
 
-		fac := getFacFromDb(uniOrFacId)
+		fac := getFacFromDb(db, uniOrFacId)
 		text = "*" + fac.Name + "*\n\n"
 
-		specs = getFacSpecsPageFromDb(uniOrFacId, profId, makeOffset(curPage))
-		specsNum = getFacSpecsNumFromDb(uniOrFacId, profId)
+		specs = getFacSpecsPageFromDb(db, uniOrFacId, profId, makeOffset(curPage))
+		specsNum = getFacSpecsNumFromDb(db, uniOrFacId, profId)
 
 		progsPattern += "#" + facsPage
 		pagesPattern += "#" + facsPage
@@ -219,11 +221,11 @@ func handleSpecsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 		profsPage = pages[1]
 		curPage = pages[2]
 
-		uni := getUniFromDb(uniOrFacId)
+		uni := getUniFromDb(db, uniOrFacId)
 		text = "*" + uni.Name + "*\n\n"
 
-		specs = getUniSpecsPageFromDb(uniOrFacId, profId, makeOffset(curPage))
-		specsNum = getUniSpecsNumFromDb(uniOrFacId, profId)
+		specs = getUniSpecsPageFromDb(db, uniOrFacId, profId, makeOffset(curPage))
+		specsNum = getUniSpecsNumFromDb(db, uniOrFacId, profId)
 	}
 
 	pagesPattern += "#" + profsPage
@@ -237,7 +239,7 @@ func handleSpecsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	return text, specsMenu
 }
 
-func handleProgsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleProgsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	pages := takePages(data)
 	unisPage := pages[0]
 	ids := takeIds(data)
@@ -256,22 +258,22 @@ func handleProgsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 			facsPage := pages[1]
 			curPage = pages[2]
 
-			fac := getFacFromDb(uniOrFacId)
+			fac := getFacFromDb(db, uniOrFacId)
 			text = "*" + fac.Name + "*\n\n"
 
-			progs = getFacProgsPageFromDb(uniOrFacId, makeOffset(curPage))
-			progsNum = getFacProgsNumFromDb(uniOrFacId)
+			progs = getFacProgsPageFromDb(db, uniOrFacId, makeOffset(curPage))
+			progsNum = getFacProgsNumFromDb(db, uniOrFacId)
 
 			pagesPattern += "#" + facsPage
 			backPattern = "getFac&" + backPattern + "#" + facsPage
 		} else {
 			curPage = pages[1]
 
-			uni := getUniFromDb(uniOrFacId)
+			uni := getUniFromDb(db, uniOrFacId)
 			text = "*" + uni.Name + "*\n\n"
 
-			progs = getUniProgsPageFromDb(uniOrFacId, makeOffset(curPage))
-			progsNum = getUniProgsNumFromDb(uniOrFacId)
+			progs = getUniProgsPageFromDb(db, uniOrFacId, makeOffset(curPage))
+			progsNum = getUniProgsNumFromDb(db, uniOrFacId)
 
 			backPattern = "getUni&" + backPattern
 		}
@@ -280,7 +282,7 @@ func handleProgsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	} else {
 		uniOrFacId := ids[1]
 		specId := ids[0]
-		spec := getSpecFromDb(specId)
+		spec := getSpecFromDb(db, specId)
 
 		var profsPage, specsPage string
 
@@ -293,11 +295,11 @@ func handleProgsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 			specsPage = pages[3]
 			curPage = pages[4]
 
-			fac := getFacFromDb(uniOrFacId)
+			fac := getFacFromDb(db, uniOrFacId)
 			text = "*" + fac.Name + "*\n\n"
 
-			progs = getFacSpecProgsPageFromDb(uniOrFacId, specId, makeOffset(curPage))
-			progsNum = getFacSpecProgsNumFromDb(uniOrFacId, specId)
+			progs = getFacSpecProgsPageFromDb(db, uniOrFacId, specId, makeOffset(curPage))
+			progsNum = getFacSpecProgsNumFromDb(db, uniOrFacId, specId)
 
 			pagesPattern += "#" + facsPage
 			backPattern += "#" + facsPage
@@ -306,11 +308,11 @@ func handleProgsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 			specsPage = pages[2]
 			curPage = pages[3]
 
-			uni := getUniFromDb(uniOrFacId)
+			uni := getUniFromDb(db, uniOrFacId)
 			text = "*" + uni.Name + "*\n\n"
 
-			progs = getUniSpecProgsPageFromDb(uniOrFacId, specId, makeOffset(curPage))
-			progsNum = getUniSpecProgsNumFromDb(uniOrFacId, specId)
+			progs = getUniSpecProgsPageFromDb(db, uniOrFacId, specId, makeOffset(curPage))
+			progsNum = getUniSpecProgsNumFromDb(db, uniOrFacId, specId)
 		}
 
 		pagesPattern += "#" + profsPage + "#" + specsPage
@@ -325,11 +327,11 @@ func handleProgsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	return text, progsMenu
 }
 
-func handleProgRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleProgRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	pages := takePages(data)
 	unisPage := pages[0]
 	progId := takeId(data)
-	prog := getProgInfoFromDb(progId)
+	prog := getProgInfoFromDb(db, progId)
 
 	facIdStr := strconv.Itoa(prog.FacultyId)
 
@@ -337,7 +339,7 @@ func handleProgRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	backPattern := "#" + unisPage
 
 	if len(pages) % 2 == 0 {
-		uni := getUniOfFacFromDb(facIdStr)
+		uni := getUniOfFacFromDb(db, facIdStr)
 		backPattern = "&" + strconv.Itoa(uni.UniversityId) + backPattern
 		text = "*" + uni.Name + "*\n\n"
 
@@ -352,7 +354,7 @@ func handleProgRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 		}
 	} else {
 		facsPage := pages[1]
-		fac := getFacFromDb(facIdStr)
+		fac := getFacFromDb(db, facIdStr)
 		backPattern = "&" + facIdStr + backPattern + "#" + facsPage
 		text = "*" + fac.Name + "*\n\n"
 
@@ -376,11 +378,12 @@ func handleProgRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	return text, progMenu
 }
 
-func handleUnisCompRequest(user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleUnisCompRequest(db *sql.DB, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
 	text := "Введите один или несколько критериев для получения подборки университетов\n"
 
 	if len(user.Eges) != 0 {
-		text += "\n*ЕГЭ:*\n" + makeTextEges(user.Eges, "    ")
+		subjs := getSubjsMapFromDb(db)
+		text += "\n*ЕГЭ:*\n" + makeTextEges(user.Eges, subjs, "    ")
 	}
 
 	if user.EntryTest {
@@ -388,16 +391,16 @@ func handleUnisCompRequest(user *UserInfo) (string, tgbotapi.InlineKeyboardMarku
 	}
 
 	if user.City != 0 {
-		city := getCityNameFromDb(user.City)
+		city := getCityNameFromDb(db, user.City)
 		text += "\n*Город:* " + city
 	}
 
 	if user.ProfileId != 0 {
 		if user.SpecialityId != 0 {
-			spec := getSpecFromDb(strconv.Itoa(user.SpecialityId))
+			spec := getSpecFromDb(db, strconv.Itoa(user.SpecialityId))
 			text += "\n*Специальность:* " + spec.Name + " (" + makeProfOrSpecCode(user.SpecialityId) + ")"
 		} else {
-			prof := getProfFromDb(strconv.Itoa(user.ProfileId))
+			prof := getProfFromDb(db, strconv.Itoa(user.ProfileId))
 			text += "\n*Профиль:* " + prof.Name + " (" + makeProfOrSpecCode(user.ProfileId) + ")"
 		}
 	}
@@ -419,12 +422,13 @@ func handleUnisCompRequest(user *UserInfo) (string, tgbotapi.InlineKeyboardMarku
 	return text, unisCompilationMenu
 }
 
-func handleChangeOrClearRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleChangeOrClearRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
 	ids := takeIds(data)
 	state, _ := strconv.Atoi(ids[0])
 	page := takePage(data)
 	text := "Измените или сбросьте"
 
+	var subjs map[int]string
 	switch state {
 	case FeeState:
 		text += " цену"
@@ -437,19 +441,21 @@ func handleChangeOrClearRequest(data string, user *UserInfo) (string, tgbotapi.I
 			text += " профиль"
 		}
 	case EgeState:
-		text += " ваши ЕГЭ\n\nВыбрано:\n" + makeTextEges(user.Eges, "")
+		subjs := getSubjsMapFromDb(db)
+		text += " ваши ЕГЭ\n\nВыбрано:\n" + makeTextEges(user.Eges, subjs,  "")
 	case SubjState:
+		subjs = getSubjsMapFromDb(db)
 		subjId, _ := strconv.Atoi(ids[1])
 		user.LastSubj = subjId
-		text += " ЕГЭ по предмету *" + getSubjNameFromDb(subjId) + "*"
+		text += " ЕГЭ по предмету *" + getSubjNameFromDb(db, subjId) + "*"
 	}
-
-	changeMenu := makeChangeOrClearMenu(state, user, page)
+	
+	changeMenu := makeChangeOrClearMenu(state, user, subjs, page)
 
 	return text, changeMenu
 }
 
-func handleCitiesRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleCitiesRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
 	text := "Выберите город обучения"
 
 	var backPattern string
@@ -459,14 +465,14 @@ func handleCitiesRequest(data string, user *UserInfo) (string, tgbotapi.InlineKe
 	} else {
 		backPattern = "chOrCl&" + strconv.Itoa(CityState)
 	}
-	cities := getCitiesFromDb(makeOffset(page))
-	citiesNum := getCitiesNumFromDb()
+	cities := getCitiesFromDb(db, makeOffset(page))
+	citiesNum := getCitiesNumFromDb(db)
 	citiesMenu := makeCitiesMenu(citiesNum, cities, backPattern, page)
 
 	return text, citiesMenu
 }
 
-func handleProfilesRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleProfilesRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
 	text := "*Выберите профиль обучения*\n\n"
 
 	var backPattern string
@@ -476,15 +482,15 @@ func handleProfilesRequest(data string, user *UserInfo) (string, tgbotapi.Inline
 	} else {
 		backPattern = "chOrCl&" + strconv.Itoa(ProfileState)
 	}
-	profs := getProfsPageFromDb(makeOffset(page))
+	profs := getProfsPageFromDb(db, makeOffset(page))
 	text += makeTextProfs(profs)
-	profsNum := getProfsNumFromDb()
+	profsNum := getProfsNumFromDb(db)
 	profsMenu := makeProfsPageMenu(profsNum, profs, backPattern, page)
 
 	return text, profsMenu
 }
 
-func handleSpecOrNotRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleSpecOrNotRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	text := "Выберите специальность или оставьте поиск только по профилю"
 	page := takePage(data)
 	profId := takeId(data)
@@ -493,7 +499,7 @@ func handleSpecOrNotRequest(data string, user *UserInfo) (string, tgbotapi.Inlin
 	return text, specOrNotMenu
 }
 
-func handleSpecialitiesRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleSpecialitiesRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	text := "*Выберите специальность обучения*\n\n"
 
 	profId := takeId(data)
@@ -510,15 +516,15 @@ func handleSpecialitiesRequest(data string) (string, tgbotapi.InlineKeyboardMark
 		backPattern = "chOrCl&" + strconv.Itoa(ProfileState)
 	}
 
-	specs := getSpecsPageFromDb(makeOffset(curPage), profId)
+	specs := getSpecsPageFromDb(db, makeOffset(curPage), profId)
 	text += makeTextSpecs(specs)
-	specsNum := getSpecsNumFromDb(profId)
+	specsNum := getSpecsNumFromDb(db, profId)
 	specsMenu := makeSpecsPageMenu(specsNum, specs, profId, pagesPattern, backPattern, curPage)
 
 	return text, specsMenu
 }
 
-func handleEgesRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleEgesRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
 	page := takePage(data)
 
 	var text string
@@ -527,12 +533,13 @@ func handleEgesRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 		text = "*Выберите ваши ЕГЭ*\n\n"
 	} else {
 		isEges = true
+		subjs := getSubjsMapFromDb(db)
 		text = "*Выберите или измените ваши ЕГЭ*\n\nУже выбрано:\n"
-		text += makeTextEges(user.Eges, "")
+		text += makeTextEges(user.Eges, subjs,  "")
 	}
 
-	subjs := getSubjsFromDb(makeOffset(page), user)
-	subjsNum := getSubjsNumFromDb(user)
+	subjs := getSubjsFromDb(db, makeOffset(page), user)
+	subjsNum := getSubjsNumFromDb(db, user)
 	egesMenu := makeEgesMenu(subjsNum, subjs, isEges, page)
 
 	return text, egesMenu
@@ -548,12 +555,12 @@ func handleSubjRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 	return text, pointsOrNotMenu
 }
 
-func handleSearchUniRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+func handleSearchUniRequest(db *sql.DB, data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
 	page := takePage(data)
 
-	innerQuery := makeSearchInnerQueryForDb(user)
+	innerQuery := makeSearchInnerQueryForDb(db, user)
 
-	unisNum := getSearchUnisNumFromDb(innerQuery)
+	unisNum := getSearchUnisNumFromDb(db, innerQuery)
 	log.Println("Num:", unisNum)
 	if unisNum == 0 {
 		text := "Не удалось подобрать вузы по выбранным критериям " + makeEmoji(CryingEmoji)
@@ -562,7 +569,7 @@ func handleSearchUniRequest(data string, user *UserInfo) (string, tgbotapi.Inlin
 
 	text := "Результаты подбора вузов:\n\n"
 
-	unis := searchUnisInDb(innerQuery, makeOffset(page))
+	unis := searchUnisInDb(db, innerQuery, makeOffset(page))
 	text += makeTextUnis(unis)
 
 	unisMenu := makeUnisMenu(unisNum, unis, "search", "uni", page)

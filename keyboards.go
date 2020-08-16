@@ -341,7 +341,7 @@ func makeUnisCompilationMenu(user *UserInfo) tgbotapi.InlineKeyboardMarkup {
 	return unisCompFullMenu
 }
 
-func makeChangeOrClearMenu(state int, user *UserInfo, curPage string) tgbotapi.InlineKeyboardMarkup {
+func makeChangeOrClearMenu(state int, user *UserInfo, subjs map[int]string, curPage string) tgbotapi.InlineKeyboardMarkup {
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 	var backPattern string
 	switch state {
@@ -365,7 +365,6 @@ func makeChangeOrClearMenu(state int, user *UserInfo, curPage string) tgbotapi.I
 		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить профиль", "clear&" + strconv.Itoa(state))))
 	case EgeState:
 		backPattern = "ege#" + curPage
-		subjs := getSubjsMapFromDb()
 		for _, ege := range user.Eges {
 			fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(subjs[ege.SubjId], "chOrCl&" + strconv.Itoa(SubjState) + "&" + strconv.Itoa(ege.SubjId) + "#" + curPage)))
 		}

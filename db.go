@@ -5,6 +5,7 @@ import (
 	"fmt"
 	_ "github.com/lib/pq"
 	uuid "github.com/satori/go.uuid"
+	"io"
 	"log"
 	"math"
 	"strconv"
@@ -13,30 +14,29 @@ import (
 
 var dbInfo = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", Host, Port, User, Password, DBname, SSLmode)
 
-func connect() (*sql.DB, error) {
+func connectToDb() (*sql.DB, error) {
 	db, err := sql.Open("postgres", dbInfo)
 	if err != nil {
 		return nil, err
 	}
-	//defer db.Close()
 
 	err = db.Ping()
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("Successfully connected!")
-
 	return db, nil
 }
 
-func insertUnis(unis []*University) {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
+func closeDb(db io.Closer) {
+	if err := db.Close(); err != nil {
+		log.Println("error closing db connection, error:", err)
+	} else {
+		log.Println("Data base connection closed")
 	}
-	defer db.Close()
+}
 
+func insertUnis(db *sql.DB, unis []*University) {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, uni := range unis {
@@ -58,13 +58,7 @@ func insertUnis(unis []*University) {
 	}
 }
 
-func insertProfsNSpecs(profs []*Profile, specs []*Speciality) {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func insertProfsNSpecs(db *sql.DB, profs []*Profile, specs []*Speciality) {
 	var valueStringsProfs []string
 	var valueArgsProfs []interface{}
 	for i, p := range profs {
@@ -74,7 +68,7 @@ func insertProfsNSpecs(profs []*Profile, specs []*Speciality) {
 	}
 
 	sqlStmt := fmt.Sprintf("INSERT INTO profile VALUES %s;", strings.Join(valueStringsProfs, ","))
-	if _, err = db.Exec(sqlStmt, valueArgsProfs...); err != nil {
+	if _, err := db.Exec(sqlStmt, valueArgsProfs...); err != nil {
 		log.Println(err)
 	}
 
@@ -90,18 +84,12 @@ func insertProfsNSpecs(profs []*Profile, specs []*Speciality) {
 	}
 
 	sqlStmt2 := fmt.Sprintf("INSERT INTO speciality VALUES %s;", strings.Join(valueStringsSpecs, ","))
-	if _, err = db.Exec(sqlStmt2, valueArgsSpecs...); err != nil {
+	if _, err := db.Exec(sqlStmt2, valueArgsSpecs...); err != nil {
 		log.Println(err)
 	}
 }
 
-func getUnisIdsNamesFromDb(withNames bool) []*University {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) []*University {
 	var unis []*University
 	if withNames {
 		rows, err := db.Query("SELECT university_id, name FROM university;")
@@ -156,13 +144,7 @@ func getUnisIdsNamesFromDb(withNames bool) []*University {
 	return unis
 }
 
-func insertFacs(facs []*Faculty) {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func insertFacs(db *sql.DB, facs []*Faculty) {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, fac := range facs {
@@ -183,13 +165,7 @@ func insertFacs(facs []*Faculty) {
 	}
 }
 
-func getFacsIdsFromDb() []*Faculty {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getFacsIdsFromDb(db *sql.DB) []*Faculty {
 	rows, err := db.Query("SELECT faculty_id FROM faculty;")
 	if err != nil {
 		log.Fatal(err)
@@ -217,36 +193,7 @@ func getFacsIdsFromDb() []*Faculty {
 	return facs
 }
 
-//func insertStudyForms(studyForms map[string]int) {
-//	db, err := sql.Open("postgres", dbInfo)
-//	if err != nil {
-//		log.Fatal("Couldn't connect to db")
-//	}
-//	defer db.Close()
-//
-//	var valueStringsStudyForms []string
-//	var valueArgsStudyForms []interface{}
-//	i := 0
-//	for f, k := range studyForms {
-//		valueStringsStudyForms = append(valueStringsStudyForms, fmt.Sprintf("($%d, $%d)", i * 2 + 1, i * 2 + 2))
-//		valueArgsStudyForms = append(valueArgsStudyForms, k)
-//		valueArgsStudyForms = append(valueArgsStudyForms, f)
-//		i++
-//	}
-//
-//	sqlStmt2 := fmt.Sprintf("INSERT INTO study_form VALUES %s;", strings.Join(valueStringsStudyForms, ","))
-//	if _, err = db.Exec(sqlStmt2, valueArgsStudyForms...); err != nil {
-//		log.Println(err)
-//	}
-//}
-
-func insertSubjs(subjs map[string]int) {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func insertSubjs(db *sql.DB, subjs map[string]int) {
 	var valueStringsSubjs []string
 	var valueArgsSubjs []interface{}
 	i := 0
@@ -258,50 +205,12 @@ func insertSubjs(subjs map[string]int) {
 	}
 
 	sqlStmt := fmt.Sprintf("INSERT INTO subject VALUES %s;", strings.Join(valueStringsSubjs, ","))
-	if _, err = db.Exec(sqlStmt, valueArgsSubjs...); err != nil {
+	if _, err := db.Exec(sqlStmt, valueArgsSubjs...); err != nil {
 		log.Println(err)
 	}
 }
 
-//func getStudyFormsFromDb() map[string]int {
-//	db, err := sql.Open("postgres", dbInfo)
-//	if err != nil {
-//		log.Fatal("Couldn't connect to db")
-//	}
-//	defer db.Close()
-//
-//	studyFormsRows, err := db.Query("SELECT * FROM study_form;")
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	defer studyFormsRows.Close()
-//
-//	studyForms := make(map[string]int)
-//	for studyFormsRows.Next() {
-//		var study_form_id int
-//		var name string
-//		err := studyFormsRows.Scan(&study_form_id, &name)
-//		if err != nil {
-//			log.Fatal(err)
-//		}
-//
-//		studyForms[name] = study_form_id
-//	}
-//	err = studyFormsRows.Err()
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	return studyForms
-//}
-
-func getRevSubjsMapFromDb() map[string]int {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getRevSubjsMapFromDb(db *sql.DB) map[string]int {
 	subjsRows, err := db.Query("SELECT * FROM subject;")
 	if err != nil {
 		log.Fatal(err)
@@ -328,12 +237,6 @@ func getRevSubjsMapFromDb() map[string]int {
 }
 
 func insertProgs(tx *sql.Tx, progs []*Program) {
-	//db, err := sql.Open("postgres", dbInfo)
-	//if err != nil {
-	//	log.Fatal("Couldn't connect to db")
-	//}
-	//defer db.Close()
-
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, prog := range progs {
@@ -363,12 +266,6 @@ func insertProgs(tx *sql.Tx, progs []*Program) {
 }
 
 func insertMinPoints(tx *sql.Tx, minEgePoints []*MinEgePoints) {
-	//db, err := sql.Open("postgres", dbInfo)
-	//if err != nil {
-	//	log.Fatal("Couldn't connect to db")
-	//}
-	//defer db.Close()
-
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, minPoints := range minEgePoints {
@@ -386,12 +283,6 @@ func insertMinPoints(tx *sql.Tx, minEgePoints []*MinEgePoints) {
 }
 
 func insertEntrTests(tx *sql.Tx, entrTests []*EntranceTest) {
-	//db, err := sql.Open("postgres", dbInfo)
-	//if err != nil {
-	//	log.Fatal("Couldn't connect to db")
-	//}
-	//defer db.Close()
-
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, entrTest := range entrTests {
@@ -408,13 +299,7 @@ func insertEntrTests(tx *sql.Tx, entrTests []*EntranceTest) {
 	}
 }
 
-func insertProgsNInfo(progs []*Program, minEgePoints []*MinEgePoints, entrTests []*EntranceTest) {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func insertProgsNInfo(db *sql.DB, progs []*Program, minEgePoints []*MinEgePoints, entrTests []*EntranceTest) {
 	tx, err := db.Begin()
 	if err != nil {
 		log.Fatal("Couldn't begin the transaction")
@@ -433,13 +318,7 @@ func insertProgsNInfo(progs []*Program, minEgePoints []*MinEgePoints, entrTests 
 	}
 }
 
-func getSpecsIdsFromDb() []*Speciality {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getSpecsIdsFromDb(db *sql.DB) []*Speciality {
 	rows, err := db.Query("SELECT speciality_id FROM speciality;")
 	if err != nil {
 		log.Fatal(err)
@@ -467,13 +346,7 @@ func getSpecsIdsFromDb() []*Speciality {
 	return specs
 }
 
-func getUniIdFromDb(uniSite string) int {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getUniIdFromDb(db *sql.DB, uniSite string) int {
 	rows, err := db.Query("SELECT university_id FROM university WHERE site LIKE" + "'%www." + uniSite + ".ru%' LIMIT 1;")
 	if err != nil {
 		log.Fatal(err)
@@ -514,13 +387,7 @@ func getUniIdFromDb(uniSite string) int {
 	return university_id
 }
 
-func insertRatingQS(ratingQS []*RatingQS) {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func insertRatingQS(db *sql.DB, ratingQS []*RatingQS) {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, uniRatingQs := range ratingQS {
@@ -531,18 +398,12 @@ func insertRatingQS(ratingQS []*RatingQS) {
 	}
 
 	sqlStmt := fmt.Sprintf("INSERT INTO rating_qs VALUES %s;", strings.Join(valueStrings, ","))
-	if _, err = db.Exec(sqlStmt, valueArgs...); err != nil {
+	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
 		log.Println(err)
 	}
 }
 
-func insertCities(cities map[int]string) {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func insertCities(db *sql.DB, cities map[int]string) {
 	var valueStrings []string
 	var valueArgs []interface{}
 	i := 0
@@ -554,20 +415,14 @@ func insertCities(cities map[int]string) {
 	}
 
 	sqlStmt := fmt.Sprintf("INSERT INTO city VALUES %s;", strings.Join(valueStrings, ","))
-	if _, err = db.Exec(sqlStmt, valueArgs...); err != nil {
+	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
 		log.Println(err)
 	}
 }
 
-func getCountFromDb(from string) int {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getCountFromDb(db *sql.DB, from string) int {
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM " + from + ";").Scan(&count)
+	err := db.QueryRow("SELECT COUNT(*) FROM " + from + ";").Scan(&count)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -575,11 +430,11 @@ func getCountFromDb(from string) int {
 	return count
 }
 
-func getUnisQSNumFromDb() int {
-	return getCountFromDb("rating_qs")
+func getUnisQSNumFromDb(db *sql.DB) int {
+	return getCountFromDb(db, "rating_qs")
 }
 
-func makeQSMark(high_mark int, low_mark int) string {
+func makeQSMark(db *sql.DB, high_mark int, low_mark int) string {
 	var mark string
 	if high_mark == low_mark {
 		mark = strconv.Itoa(high_mark)
@@ -590,13 +445,7 @@ func makeQSMark(high_mark int, low_mark int) string {
 	return mark
 }
 
-func getUnisQSPageFromDb(offset string) []*UniversityQS {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getUnisQSPageFromDb(db *sql.DB, offset string) []*UniversityQS {
 	rows, err := db.Query("SELECT u.university_id, u.name, rq.high_mark, rq.low_mark FROM university u JOIN rating_qs rq on u.university_id = rq.university_id ORDER BY high_mark LIMIT 5 OFFSET " + offset + ";")
 	if err != nil {
 		log.Fatal(err)
@@ -612,7 +461,7 @@ func getUnisQSPageFromDb(offset string) []*UniversityQS {
 			log.Fatal(err)
 		}
 
-		mark := makeQSMark(high_mark, low_mark)
+		mark := makeQSMark(db, high_mark, low_mark)
 
 		universityQs := &UniversityQS{
 			UniversityId: university_id,
@@ -630,17 +479,11 @@ func getUnisQSPageFromDb(offset string) []*UniversityQS {
 	return universitiesQS
 }
 
-func getUniFromDb(uniId string) University {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getUniFromDb(db *sql.DB, uniId string) University {
 	var university_id int
 	var name, description, site, email, adress, phone string
 	var military_dep, dormitary bool
-	err = db.QueryRow("SELECT university_id, name, description, site, email, adress, phone, military_dep, dormitary FROM university WHERE university_id = " + uniId + ";").Scan(&university_id, &name, &description, &site, &email, &adress, &phone, &military_dep, &dormitary)
+	err := db.QueryRow("SELECT university_id, name, description, site, email, adress, phone, military_dep, dormitary FROM university WHERE university_id = " + uniId + ";").Scan(&university_id, &name, &description, &site, &email, &adress, &phone, &military_dep, &dormitary)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -660,35 +503,23 @@ func getUniFromDb(uniId string) University {
 	return uni
 }
 
-func getUniQSRateFromDb(uniId string) string {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getUniQSRateFromDb(db *sql.DB, uniId string) string {
 	var high_mark, low_mark int
-	err = db.QueryRow("SELECT high_mark, low_mark FROM rating_qs WHERE university_id = " + uniId + ";").Scan(&high_mark, &low_mark)
+	err := db.QueryRow("SELECT high_mark, low_mark FROM rating_qs WHERE university_id = " + uniId + ";").Scan(&high_mark, &low_mark)
 	if err != nil {
 		return ""
 	}
 
-	mark := makeQSMark(high_mark, low_mark)
+	mark := makeQSMark(db, high_mark, low_mark)
 
 	return mark
 }
 
-func getFacsNumFromDb(uniId string) int {
-	return getCountFromDb("faculty WHERE university_id = " + uniId)
+func getFacsNumFromDb(db *sql.DB, uniId string) int {
+	return getCountFromDb(db, "faculty WHERE university_id = " + uniId)
 }
 
-func getFacsPageFromDb(uniId string, offset string) []*Faculty {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getFacsPageFromDb(db *sql.DB, uniId string, offset string) []*Faculty {
 	rows, err := db.Query("SELECT faculty_id, name FROM faculty WHERE university_id = " + uniId + " LIMIT 5 OFFSET " + offset)
 	if err != nil {
 		log.Fatal(err)
@@ -721,16 +552,10 @@ func getFacsPageFromDb(uniId string, offset string) []*Faculty {
 	return facs
 }
 
-func getFacFromDb(facId string) Faculty {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getFacFromDb(db *sql.DB, facId string) Faculty {
 	var university_id, faculty_id int
 	var name, description, site, email, adress, phone string
-	err = db.QueryRow("SELECT * FROM faculty WHERE faculty_id = " + facId + ";").Scan(&faculty_id, &name, &description, &site, &email, &adress, &phone, &university_id)
+	err := db.QueryRow("SELECT * FROM faculty WHERE faculty_id = " + facId + ";").Scan(&faculty_id, &name, &description, &site, &email, &adress, &phone, &university_id)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -749,17 +574,11 @@ func getFacFromDb(facId string) Faculty {
 	return fac
 }
 
-func getFindUnisNumFromDb(query string) int {
-	return getCountFromDb("university_name_descr_vector WHERE name_descr_vector @@ plainto_tsquery('" + query + "')")
+func getFindUnisNumFromDb(db *sql.DB, query string) int {
+	return getCountFromDb(db, "university_name_descr_vector WHERE name_descr_vector @@ plainto_tsquery('" + query + "')")
 }
 
-func getUnisIdsNNamesFromDb(query string) []*University {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getUnisIdsNNamesFromDb(db *sql.DB, query string) []*University {
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
@@ -790,7 +609,7 @@ func getUnisIdsNNamesFromDb(query string) []*University {
 	return unis
 }
 
-func findUnisInDb(query string, offset string) []*University {
+func findUnisInDb(db *sql.DB, query string, offset string) []*University {
 	dbQuery := "SELECT u.university_id, u.name FROM university u " +
 		"JOIN (" +
 		"SELECT university_id, ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) " +
@@ -800,10 +619,10 @@ func findUnisInDb(query string, offset string) []*University {
 		"LIMIT 5 OFFSET " + offset +
 		") l ON (u.university_id = l.university_id);"
 
-	return getUnisIdsNNamesFromDb(dbQuery)
+	return getUnisIdsNNamesFromDb(db, dbQuery)
 }
 
-func getUniProfsNumFromDb(uniId string) int {
+func getUniProfsNumFromDb(db *sql.DB, uniId string) int {
 	from := "(" +
 		"SELECT DISTINCT s.profile_id FROM speciality s " +
 		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
@@ -811,16 +630,10 @@ func getUniProfsNumFromDb(uniId string) int {
 		"JOIN university u ON (f.university_id = u.university_id) " +
 		"WHERE u.university_id = " + uniId +
 		") l"
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getProfsFromDb(query string) []*Profile {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getProfsFromDb(db *sql.DB, query string) []*Profile {
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
@@ -851,7 +664,7 @@ func getProfsFromDb(query string) []*Profile {
 	return profs
 }
 
-func getUniProfsPageFromDb(uniId string, offset string) []*Profile {
+func getUniProfsPageFromDb(db *sql.DB, uniId string, offset string) []*Profile {
 	query := "SELECT p.* FROM profile p " +
 		"JOIN (" +
 		"SELECT DISTINCT s.profile_id FROM speciality s " +
@@ -861,20 +674,20 @@ func getUniProfsPageFromDb(uniId string, offset string) []*Profile {
 		"WHERE u.university_id = " + uniId +
 		") l ON (p.profile_id = l.profile_id) " +
 		"LIMIT 5 OFFSET " + offset + ";"
-	return getProfsFromDb(query)
+	return getProfsFromDb(db, query)
 }
 
-func getFacProfsNumFromDb(facId string) int {
+func getFacProfsNumFromDb(db *sql.DB, facId string) int {
 	from := "(" +
 		"SELECT DISTINCT s.profile_id FROM speciality s " +
 		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId +
 		") l"
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getFacProfsPageFromDb(facId string, offset string) []*Profile {
+func getFacProfsPageFromDb(db *sql.DB, facId string, offset string) []*Profile {
 	query := "SELECT p.* FROM profile p " +
 		"JOIN (" +
 		"SELECT DISTINCT s.profile_id FROM speciality s " +
@@ -883,19 +696,13 @@ func getFacProfsPageFromDb(facId string, offset string) []*Profile {
 		"WHERE f.faculty_id = " + facId +
 		") l ON (p.profile_id = l.profile_id) " +
 		"LIMIT 5 OFFSET " + offset + ";"
-	return getProfsFromDb(query)
+	return getProfsFromDb(db, query)
 }
 
-func getProfFromDb(profId string) Profile {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getProfFromDb(db *sql.DB, profId string) Profile {
 	var profile_id int
 	var name string
-	err = db.QueryRow("SELECT * FROM profile WHERE profile_id = " + profId + ";").Scan(&profile_id, &name)
+	err := db.QueryRow("SELECT * FROM profile WHERE profile_id = " + profId + ";").Scan(&profile_id, &name)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -908,13 +715,7 @@ func getProfFromDb(profId string) Profile {
 	return prof
 }
 
-func getSpecsFromDb(query string) []*Speciality {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getSpecsFromDb(db *sql.DB, query string) []*Speciality {
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
@@ -948,7 +749,7 @@ func getSpecsFromDb(query string) []*Speciality {
 	return specs
 }
 
-func getUniSpecsNumFromDb(uniId string, profId string) int {
+func getUniSpecsNumFromDb(db *sql.DB, uniId string, profId string) int {
 	from := "(" +
 		"SELECT DISTINCT s.speciality_id FROM speciality s " +
 		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
@@ -956,10 +757,10 @@ func getUniSpecsNumFromDb(uniId string, profId string) int {
 		"JOIN university u ON (f.university_id = u.university_id) " +
 		"WHERE u.university_id = " + uniId + " AND s.profile_id = " + profId +
 		") l"
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getUniSpecsPageFromDb(uniId string, profId string, offset string) []*Speciality {
+func getUniSpecsPageFromDb(db *sql.DB, uniId string, profId string, offset string) []*Speciality {
 	query := "SELECT s.* FROM speciality s " +
 		"JOIN (" +
 		"SELECT DISTINCT s.speciality_id FROM speciality s " +
@@ -969,20 +770,20 @@ func getUniSpecsPageFromDb(uniId string, profId string, offset string) []*Specia
 		"WHERE u.university_id = " + uniId + " AND s.profile_id = " + profId +
 		") l ON (s.speciality_id = l.speciality_id) " +
 		"LIMIT 5 OFFSET " + offset + ";"
-	return getSpecsFromDb(query)
+	return getSpecsFromDb(db, query)
 }
 
-func getFacSpecsNumFromDb(facId string, profId string) int {
+func getFacSpecsNumFromDb(db *sql.DB, facId string, profId string) int {
 	from := "(" +
 		"SELECT DISTINCT s.speciality_id FROM speciality s " +
 		"JOIN program pr ON (s.speciality_id = pr.speciality_id) " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId + " AND s.profile_id = " + profId +
 		") l"
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getFacSpecsPageFromDb(facId string, profId string, offset string) []*Speciality {
+func getFacSpecsPageFromDb(db *sql.DB, facId string, profId string, offset string) []*Speciality {
 	query := "SELECT s.* FROM speciality s " +
 		"JOIN (" +
 		"SELECT DISTINCT s.speciality_id FROM speciality s " +
@@ -991,20 +792,14 @@ func getFacSpecsPageFromDb(facId string, profId string, offset string) []*Specia
 		"WHERE f.faculty_id = " + facId + " AND s.profile_id = " + profId +
 		") l ON (s.speciality_id = l.speciality_id) " +
 		"LIMIT 5 OFFSET " + offset + ";"
-	return getSpecsFromDb(query)
+	return getSpecsFromDb(db, query)
 }
 
-func getSpecFromDb(specId string) Speciality {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getSpecFromDb(db *sql.DB, specId string) Speciality {
 	var speciality_id, profile_id int
 	var name string
 	var bachelor bool
-	err = db.QueryRow("SELECT * FROM speciality WHERE speciality_id = " + specId + ";").Scan(&speciality_id, &name, &bachelor, &profile_id)
+	err := db.QueryRow("SELECT * FROM speciality WHERE speciality_id = " + specId + ";").Scan(&speciality_id, &name, &bachelor, &profile_id)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1019,13 +814,7 @@ func getSpecFromDb(specId string) Speciality {
 	return spec
 }
 
-func getProgsInfoFromDb(query string) []*Program {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getProgsInfoFromDb(db *sql.DB, query string) []*Program {
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
@@ -1058,77 +847,71 @@ func getProgsInfoFromDb(query string) []*Program {
 	return progs
 }
 
-func getUniProgsNumFromDb(uniId string) int {
+func getUniProgsNumFromDb(db *sql.DB, uniId string) int {
 	from := "program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"JOIN university u ON (f.university_id = u.university_id) " +
 		"WHERE u.university_id = " + uniId
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getUniProgsPageFromDb(uniId string, offset string) []*Program {
+func getUniProgsPageFromDb(db *sql.DB, uniId string, offset string) []*Program {
 	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"JOIN university u ON (f.university_id = u.university_id) " +
 		"WHERE u.university_id = " + uniId +
 		" LIMIT 5 OFFSET " + offset + ";"
-	return getProgsInfoFromDb(query)
+	return getProgsInfoFromDb(db, query)
 }
 
-func getFacProgsNumFromDb(facId string) int {
+func getFacProgsNumFromDb(db *sql.DB, facId string) int {
 	from := "program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getFacProgsPageFromDb(facId string, offset string) []*Program {
+func getFacProgsPageFromDb(db *sql.DB, facId string, offset string) []*Program {
 	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId +
 		" LIMIT 5 OFFSET " + offset + ";"
-	return getProgsInfoFromDb(query)
+	return getProgsInfoFromDb(db, query)
 }
 
-func getUniSpecProgsNumFromDb(uniId string, specId string) int {
+func getUniSpecProgsNumFromDb(db *sql.DB, uniId string, specId string) int {
 	from := "program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"JOIN university u ON (f.university_id = u.university_id) " +
 		"WHERE u.university_id = " + uniId + " AND pr.speciality_id = " + specId
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getUniSpecProgsPageFromDb(uniId string, specId string, offset string) []*Program {
+func getUniSpecProgsPageFromDb(db *sql.DB, uniId string, specId string, offset string) []*Program {
 	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"JOIN university u ON (f.university_id = u.university_id) " +
 		"WHERE u.university_id = " + uniId + " AND pr.speciality_id = " + specId +
 		" LIMIT 5 OFFSET " + offset + ";"
-	return getProgsInfoFromDb(query)
+	return getProgsInfoFromDb(db, query)
 }
 
-func getFacSpecProgsNumFromDb(facId string, specId string) int {
+func getFacSpecProgsNumFromDb(db *sql.DB, facId string, specId string) int {
 	from := "program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId + " AND pr.speciality_id = " + specId
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getFacSpecProgsPageFromDb(facId string, specId string, offset string) []*Program {
+func getFacSpecProgsPageFromDb(db *sql.DB, facId string, specId string, offset string) []*Program {
 	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId + " AND pr.speciality_id = " + specId +
 		" LIMIT 5 OFFSET " + offset + ";"
-	return getProgsInfoFromDb(query)
+	return getProgsInfoFromDb(db, query)
 }
 
-func getProgInfoFromDb(progId string) ProgramInfo {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getProgInfoFromDb(db *sql.DB, progId string) ProgramInfo {
 	var prog ProgramInfo
 	query := "SELECT pr.program_id, pr.program_num, pr.name, pr.description, pr.free_places, pr.paid_places, pr.fee::numeric::int8, pr.free_pass_points, pr.paid_pass_points, pr.study_form, pr.study_language, pr.study_base, pr.study_years, pr.faculty_id, pr.speciality_id, s2.name, s2.bachelor, COALESCE(l.ege, '') as eges, COALESCE(l2.entrs, '') as entrs FROM program pr " +
 		"LEFT JOIN (" +
@@ -1144,7 +927,7 @@ func getProgInfoFromDb(progId string) ProgramInfo {
 		") l2 ON (pr.program_id = l2.program_id) " +
 		"LEFT JOIN speciality s2 ON (pr.speciality_id = s2.speciality_id) " +
 		"WHERE pr.program_id = '" + progId + "';"
-	err = db.QueryRow(query).Scan(&prog.ProgramId, &prog.ProgramNum, &prog.Name, &prog.Description, &prog.FreePlaces, &prog.PaidPlaces, &prog.Fee, &prog.FreePassPoints, &prog.PaidPassPoints, &prog.StudyForm, &prog.StudyLanguage, &prog.StudyBase, &prog.StudyYears, &prog.FacultyId, &prog.SpecialityId, &prog.SpecialityName, &prog.Bachelor, &prog.EGEs, &prog.EntranceTests)
+	err := db.QueryRow(query).Scan(&prog.ProgramId, &prog.ProgramNum, &prog.Name, &prog.Description, &prog.FreePlaces, &prog.PaidPlaces, &prog.Fee, &prog.FreePassPoints, &prog.PaidPassPoints, &prog.StudyForm, &prog.StudyLanguage, &prog.StudyBase, &prog.StudyYears, &prog.FacultyId, &prog.SpecialityId, &prog.SpecialityName, &prog.Bachelor, &prog.EGEs, &prog.EntranceTests)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1152,16 +935,10 @@ func getProgInfoFromDb(progId string) ProgramInfo {
 	return prog
 }
 
-func getUniOfFacFromDb(facId string) University {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getUniOfFacFromDb(db *sql.DB, facId string) University {
 	var university_id int
 	var name string
-	err = db.QueryRow("SELECT u.university_id, u.name FROM university u JOIN faculty f ON (u.university_id = f.university_id) WHERE faculty_id = " + facId + ";").Scan(&university_id, &name)
+	err := db.QueryRow("SELECT u.university_id, u.name FROM university u JOIN faculty f ON (u.university_id = f.university_id) WHERE faculty_id = " + facId + ";").Scan(&university_id, &name)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1174,18 +951,12 @@ func getUniOfFacFromDb(facId string) University {
 	return uni
 }
 
-func getCitiesNumFromDb() int {
+func getCitiesNumFromDb(db *sql.DB) int {
 	from := "city"
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getCitiesFromDb(offset string) []*City {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getCitiesFromDb(db *sql.DB, offset string) []*City {
 	rows, err := db.Query("SELECT * FROM city ORDER BY name LIMIT 5 OFFSET " + offset + ";")
 	if err != nil {
 		log.Fatal(err)
@@ -1216,15 +987,9 @@ func getCitiesFromDb(offset string) []*City {
 	return cities
 }
 
-func getCityNameFromDb(cityId int) string {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getCityNameFromDb(db *sql.DB, cityId int) string {
 	var name string
-	err = db.QueryRow("SELECT name FROM city WHERE city_id = " + strconv.Itoa(cityId) + ";").Scan(&name)
+	err := db.QueryRow("SELECT name FROM city WHERE city_id = " + strconv.Itoa(cityId) + ";").Scan(&name)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1232,33 +997,27 @@ func getCityNameFromDb(cityId int) string {
 	return name
 }
 
-func getProfsNumFromDb() int {
+func getProfsNumFromDb(db *sql.DB) int {
 	from := "profile"
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getProfsPageFromDb(offset string) []*Profile {
+func getProfsPageFromDb(db *sql.DB, offset string) []*Profile {
 	query := "SELECT * FROM profile ORDER BY name LIMIT 5 OFFSET " + offset
-	return getProfsFromDb(query)
+	return getProfsFromDb(db, query)
 }
 
-func getSpecsNumFromDb(profId string) int {
+func getSpecsNumFromDb(db *sql.DB, profId string) int {
 	from := "speciality WHERE profile_id = " + profId
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getSpecsPageFromDb(offset string, profId string) []*Speciality {
+func getSpecsPageFromDb(db *sql.DB, offset string, profId string) []*Speciality {
 	query := "SELECT * FROM speciality WHERE profile_id = " + profId + " ORDER BY name LIMIT 5 OFFSET " + offset
-	return getSpecsFromDb(query)
+	return getSpecsFromDb(db, query)
 }
 
-func getSubjsMapFromDb() map[int]string {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getSubjsMapFromDb(db *sql.DB) map[int]string {
 	subjsRows, err := db.Query("SELECT * FROM subject;")
 	if err != nil {
 		log.Fatal(err)
@@ -1284,7 +1043,7 @@ func getSubjsMapFromDb() map[int]string {
 	return subjs
 }
 
-func getSubjsNumFromDb(user *UserInfo) int {
+func getSubjsNumFromDb(db *sql.DB, user *UserInfo) int {
 	from := "subject"
 	if len(user.Eges) != 0 {
 		from += " WHERE "
@@ -1297,16 +1056,10 @@ func getSubjsNumFromDb(user *UserInfo) int {
 		}
 	}
 
-	return getCountFromDb(from)
+	return getCountFromDb(db, from)
 }
 
-func getSubjsFromDb(offset string, user *UserInfo) []*Subject {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getSubjsFromDb(db *sql.DB, offset string, user *UserInfo) []*Subject {
 	var except string
 	if len(user.Eges) != 0 {
 		except += "WHERE "
@@ -1350,15 +1103,9 @@ func getSubjsFromDb(offset string, user *UserInfo) []*Subject {
 	return subjs
 }
 
-func getSubjNameFromDb(subjId int) string {
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		log.Fatal("Couldn't connect to db")
-	}
-	defer db.Close()
-
+func getSubjNameFromDb(db *sql.DB, subjId int) string {
 	var name string
-	err = db.QueryRow("SELECT name FROM subject WHERE subject_id = " + strconv.Itoa(subjId) + ";").Scan(&name)
+	err := db.QueryRow("SELECT name FROM subject WHERE subject_id = " + strconv.Itoa(subjId) + ";").Scan(&name)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1366,7 +1113,7 @@ func getSubjNameFromDb(subjId int) string {
 	return name
 }
 
-func makeSearchInnerQueryForDb(user *UserInfo) string {
+func makeSearchInnerQueryForDb(db *sql.DB, user *UserInfo) string {
 	var conds []string
 	from := "SELECT DISTINCT u.university_id FROM university u " +
 		"JOIN faculty f ON (u.university_id = f.university_id) " +
@@ -1448,15 +1195,15 @@ func makeSearchInnerQueryForDb(user *UserInfo) string {
 	return from + wholeCond
 }
 
-func getSearchUnisNumFromDb(from string) int {
-	return getCountFromDb("(" + from + ") l")
+func getSearchUnisNumFromDb(db *sql.DB, from string) int {
+	return getCountFromDb(db, "(" + from + ") l")
 }
 
-func searchUnisInDb(innerQuery string, offset string) []*University {
+func searchUnisInDb(db *sql.DB, innerQuery string, offset string) []*University {
 	query := "SELECT u.university_id, u.name FROM university u " +
 		"JOIN (" + innerQuery +
 		") l ON (u.university_id = l.university_id) " +
 		"LIMIT 5 OFFSET " + offset + ";"
 	log.Println("QUERY:", query)
-	return getUnisIdsNNamesFromDb(query)
+	return getUnisIdsNNamesFromDb(db, query)
 }
