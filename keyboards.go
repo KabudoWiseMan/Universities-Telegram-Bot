@@ -8,38 +8,6 @@ import (
 	"strings"
 )
 
-//var numericKeyboard = tgbotapi.NewReplyKeyboard(
-//	tgbotapi.NewKeyboardButtonRow(
-//		tgbotapi.NewKeyboardButton("1"),
-//		tgbotapi.NewKeyboardButton("2"),
-//		tgbotapi.NewKeyboardButton("3"),
-//	),
-//	tgbotapi.NewKeyboardButtonRow(
-//		tgbotapi.NewKeyboardButton("4"),
-//		tgbotapi.NewKeyboardButton("5"),
-//		tgbotapi.NewKeyboardButton("6"),
-//	),
-//	tgbotapi.NewKeyboardButtonRow(
-//		tgbotapi.NewKeyboardButton("7"),
-//		tgbotapi.NewKeyboardButton("8"),
-//		tgbotapi.NewKeyboardButton("9"),
-//	),
-//	tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("0")),
-//)
-
-//var numericInlineKeyboard = tgbotapi.NewInlineKeyboardMarkup(
-//	tgbotapi.NewInlineKeyboardRow(
-//		tgbotapi.NewInlineKeyboardButtonURL("1.com","http://1.com"),
-//		tgbotapi.NewInlineKeyboardButtonSwitch("2sw","open 2"),
-//		tgbotapi.NewInlineKeyboardButtonData("3","3"),
-//	),
-//	tgbotapi.NewInlineKeyboardRow(
-//		tgbotapi.NewInlineKeyboardButtonData("4","4"),
-//		tgbotapi.NewInlineKeyboardButtonData("5","5"),
-//		tgbotapi.NewInlineKeyboardButtonData("6","6"),
-//	),
-//)
-
 var (
 	mainButton = tgbotapi.NewInlineKeyboardButtonData("<< Главное меню >>","main")
 	qsButton = tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт QS", RatingQsSite)

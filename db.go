@@ -1390,7 +1390,7 @@ func makeSearchInnerQueryForDb(user *UserInfo) string {
 			") l2 ON p.program_id = l2.program_id "
 	}
 
-	if user.EntryTest {
+	if !user.EntryTest {
 		conds = append(conds, "p.program_id NOT IN (SELECT DISTINCT program_id FROM entrance_test)")
 	}
 
