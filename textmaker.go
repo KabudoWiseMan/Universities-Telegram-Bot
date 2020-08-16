@@ -213,3 +213,13 @@ func makeTextProg(prog ProgramInfo) string {
 
 	return res
 }
+
+func makeTextEges(eges []Ege, indent string) string {
+	var res string
+	subjs := getSubjsMapFromDb()
+	for _, ege := range eges {
+		res += indent + subjs[ege.SubjId] + " " + strconv.Itoa(int(ege.MinPoints)) + "\n"
+	}
+
+	return res[:len(res) - 1]
+}

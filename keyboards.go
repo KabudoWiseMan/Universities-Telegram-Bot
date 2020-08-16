@@ -2,6 +2,7 @@ package main
 
 import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -18,6 +19,12 @@ import (
 //		tgbotapi.NewKeyboardButton("5"),
 //		tgbotapi.NewKeyboardButton("6"),
 //	),
+//	tgbotapi.NewKeyboardButtonRow(
+//		tgbotapi.NewKeyboardButton("7"),
+//		tgbotapi.NewKeyboardButton("8"),
+//		tgbotapi.NewKeyboardButton("9"),
+//	),
+//	tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("0")),
 //)
 
 //var numericInlineKeyboard = tgbotapi.NewInlineKeyboardMarkup(
@@ -46,15 +53,6 @@ var (
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подбор ВУЗа","uni")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Найти ВУЗ","fUni")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Рейтинг ВУЗов QS","rate")),
-	)
-
-	unisCompilationMenu = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Баллы ЕГЭ","ege")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Профиль","pro")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Специальность","spec")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Город","city")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Важно наличие военной кафедры","army")),
-		tgbotapi.NewInlineKeyboardRow(mainButton),
 	)
 )
 
@@ -150,7 +148,6 @@ func makeUniMenu(uni University, page string) tgbotapi.InlineKeyboardMarkup {
 	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Факультеты", "facs&" + strconv.Itoa(uni.UniversityId) + "#" + page + "#1")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Профили", "profs&" + strconv.Itoa(uni.UniversityId) + "#" + page + "#1")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Программы обучения", "progs&" + strconv.Itoa(uni.UniversityId) + "#" + page + "#1")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Подобрать программу обучения", "findProg&" + strconv.Itoa(uni.UniversityId) + "#" + page + "#1")),
 		tgbotapi.NewInlineKeyboardRow(makeBackButton("back#" + page)),
 		tgbotapi.NewInlineKeyboardRow(mainButton),
 	)
@@ -214,18 +211,21 @@ func makeFacMenu(fac Faculty, pages []string) tgbotapi.InlineKeyboardMarkup {
 	return uniFullMenu
 }
 
-func makeUnisMenu(unisNum int, unis []*University, curPage string) tgbotapi.InlineKeyboardMarkup {
+func makeUnisMenu(unisNum int, unis []*University, pagesPattern string, backPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
 	var unisButtons [][]tgbotapi.InlineKeyboardButton
 	for _, uni := range unis {
 		unisButtons = append(unisButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(uni.Name, "getUni&" + strconv.Itoa(uni.UniversityId) + "#" + curPage)))
 	}
 
 	curPageNum, _ := strconv.Atoi(curPage)
-	paginator := makePaginator(unisNum, 5, curPageNum, "findUniPage")
+	paginator := makePaginator(unisNum, 5, curPageNum, pagesPattern)
 
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 	fullButtons = append(fullButtons, unisButtons...)
 	fullButtons = append(fullButtons, paginator)
+	if backPattern != "" {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)))
+	}
 	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
 
 	unisFullMenu := tgbotapi.NewInlineKeyboardMarkup(
@@ -303,4 +303,253 @@ func makeProgMenu(backPattern string) tgbotapi.InlineKeyboardMarkup {
 		tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)),
 		tgbotapi.NewInlineKeyboardRow(mainButton),
 	)
+}
+
+func makeUnisCompilationMenu(user *UserInfo) tgbotapi.InlineKeyboardMarkup {
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	filter := false
+
+	if len(user.Eges) == 0 {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ЕГЭ","ege#1")))
+	} else {
+		filter = true
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить ЕГЭ", "ege#1")))
+	}
+
+	if !user.EntryTest {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Готов ко вступительным","entry")))
+	} else {
+		filter = true
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Не готов ко вступительным", "entry")))
+	}
+
+	if user.City == 0 {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Город","city#1")))
+	} else {
+		filter = true
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить город","chOrCl&" + strconv.Itoa(CityState))))
+	}
+
+	if user.SpecialityId == 0 && user.ProfileId == 0 {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Профиль", "pro#1")))
+	} else {
+		filter = true
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить профиль/cпециальность", "chOrCl&" + strconv.Itoa(ProfileState))))
+	}
+
+	if !user.Dormatary {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Нужно общежитие", "dorm")))
+	} else {
+		filter = true
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Не важно общежитие", "dorm")))
+	}
+
+	if !user.MilitaryDep {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Нужна военная кафедра", "army")))
+	} else {
+		filter = true
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Не важна военная кафедра", "army")))
+	}
+
+	if user.Fee == math.MaxUint64 {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Цена", "fee")))
+	} else {
+		filter = true
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить цену", "chOrCl&" + strconv.Itoa(FeeState))))
+	}
+
+	if filter {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить всё", "clear&" + strconv.Itoa(UniState))))
+	}
+
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Поиск", "search#1")))
+
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	unisCompFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return unisCompFullMenu
+}
+
+func makeChangeOrClearMenu(state int, user *UserInfo, curPage string) tgbotapi.InlineKeyboardMarkup {
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	var backPattern string
+	switch state {
+	case FeeState:
+		backPattern = "uni"
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить максимальную цену", "fee")))
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить максимальную цену", "clear&" + strconv.Itoa(state))))
+	case CityState:
+		backPattern = "uni"
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить город", "city#1")))
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить город", "clear&" + strconv.Itoa(state))))
+	case ProfileState:
+		backPattern = "uni"
+		if user.SpecialityId != 0 {
+			fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить специальность", "spe&" + strconv.Itoa(user.ProfileId) + "#1")))
+			fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить специальность", "clear&" + strconv.Itoa(SpecialityState))))
+		} else {
+			fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Выбрать специальность", "spe&" + strconv.Itoa(user.ProfileId) + "#1")))
+		}
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить профиль", "pro#1")))
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить профиль", "clear&" + strconv.Itoa(state))))
+	case EgeState:
+		backPattern = "ege#" + curPage
+		subjs := getSubjsMapFromDb()
+		for _, ege := range user.Eges {
+			fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(subjs[ege.SubjId], "chOrCl&" + strconv.Itoa(SubjState) + "&" + strconv.Itoa(ege.SubjId) + "#" + curPage)))
+		}
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить всё", "clear&" + strconv.Itoa(EgeState))))
+	case SubjState:
+		backPattern = "chOrCl&" + strconv.Itoa(EgeState) + "#" + curPage
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить баллы", "chPoints#" + curPage)))
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить", "clear&" + strconv.Itoa(state))))
+	}
+
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	changeFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	log.Println("ALRIGHT:", changeFullMenu.InlineKeyboard)
+	return changeFullMenu
+}
+
+func makeCitiesMenu(citiesNum int, cities []*City, backPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
+	var citiesButtons [][]tgbotapi.InlineKeyboardButton
+	for _, city := range cities {
+		citiesButtons = append(citiesButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(city.Name, "setCity&" + strconv.Itoa(city.CityId))))
+	}
+
+	curPageNum, _ := strconv.Atoi(curPage)
+	paginator := makePaginator(citiesNum, 5, curPageNum, "city")
+
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	fullButtons = append(fullButtons, citiesButtons...)
+	fullButtons = append(fullButtons, paginator)
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	citiesFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return citiesFullMenu
+}
+
+func makeProfsPageMenu(profsNum int, profs []*Profile, backPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
+	var profsButtons [][]tgbotapi.InlineKeyboardButton
+	for _, prof := range profs {
+		profsButtons = append(profsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(makeProfOrSpecCode(prof.ProfileId) + " " + prof.Name, "proOrSpe&" + strconv.Itoa(prof.ProfileId) + "#" + curPage)))
+	}
+
+	curPageNum, _ := strconv.Atoi(curPage)
+	paginator := makePaginator(profsNum, 5, curPageNum, "pro")
+
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	fullButtons = append(fullButtons, profsButtons...)
+	fullButtons = append(fullButtons, paginator)
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	profsFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return profsFullMenu
+}
+
+func makeSpecOrNotMenu(profsPage string, profId string) tgbotapi.InlineKeyboardMarkup {
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Выбрать специальность", "spe&" + profId + "#" + profsPage + "#1")))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Искать только по профилю", "setPro&" + profId)))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton("pro#" + profsPage)))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	specOrNotFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return specOrNotFullMenu
+}
+
+func makeSpecsPageMenu(specsNum int, specs []*Speciality, profId string, pagesPattern string, backPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
+	var specsButtons [][]tgbotapi.InlineKeyboardButton
+	for _, spec := range specs {
+		specsButtons = append(specsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(makeProfOrSpecCode(spec.SpecialityId) + " " + spec.Name, "setSpe&" + profId + "&" + strconv.Itoa(spec.SpecialityId))))
+	}
+
+	curPageNum, _ := strconv.Atoi(curPage)
+	paginator := makePaginator(specsNum, 5, curPageNum, "spe&" + profId + pagesPattern)
+
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	fullButtons = append(fullButtons, specsButtons...)
+	fullButtons = append(fullButtons, paginator)
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton(backPattern)))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	specsFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return specsFullMenu
+}
+
+func makeMainBackMenu(data string) tgbotapi.InlineKeyboardMarkup {
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	if data != "" {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton(data)))
+	}
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	mainBackFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return mainBackFullMenu
+}
+
+func makeEgesMenu(subjsNum int, subjs []*Subject, isEges bool, curPage string) tgbotapi.InlineKeyboardMarkup {
+	var egesButtons [][]tgbotapi.InlineKeyboardButton
+	for _, subj := range subjs {
+		egesButtons = append(egesButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(subj.Name, "subj&" + strconv.Itoa(subj.SubjectId) + "#" + curPage)))
+	}
+
+	curPageNum, _ := strconv.Atoi(curPage)
+	paginator := makePaginator(subjsNum, 5, curPageNum, "ege")
+
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+	fullButtons = append(fullButtons, egesButtons...)
+	if isEges {
+		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить/сбросить ЕГЭ", "chOrCl&" + strconv.Itoa(EgeState) + "#" + curPage)))
+	}
+	fullButtons = append(fullButtons, paginator)
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Готово!", "uni")))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	egesFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return egesFullMenu
+}
+
+func makePointsOrNotMenu(curPage string, subjId string) tgbotapi.InlineKeyboardMarkup {
+	var fullButtons [][]tgbotapi.InlineKeyboardButton
+
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Ввести баллы", "points&" + subjId + "#" + curPage)))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Искать только по предмету", "setEge&" + subjId)))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(makeBackButton("ege#" + curPage)))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
+
+	pointsOrNotFullMenu := tgbotapi.NewInlineKeyboardMarkup(
+		fullButtons...
+	)
+
+	return pointsOrNotFullMenu
 }

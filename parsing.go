@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"time"
 	"github.com/chromedp/chromedp"
 	uuid "github.com/satori/go.uuid"
 	"golang.org/x/net/html"
@@ -13,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 func getChildren(node *html.Node) []*html.Node {
@@ -723,7 +723,7 @@ func parsePrograms(facs []*Faculty, specs []*Speciality, subjs map[string]int) (
 		specs = getSpecsIdsFromDb()
 	}
 	if len(subjs) == 0 {
-		subjs = getSubjsFromDb()
+		subjs = getRevSubjsMapFromDb()
 	}
 
 	specsIds := make(map[int]bool)
@@ -1315,6 +1315,62 @@ func searchRatingQSList(node *html.Node) []*RatingQS {
 	return nil
 }
 
+func parseCities() map[int]string {
+	universitiesMainUrl := UniversitiesSite[:20]
+	log.Println("sending request to " + universitiesMainUrl)
+	if response, err := http.Get(universitiesMainUrl); err != nil {
+		log.Println("request to " + universitiesMainUrl + " failed", "error: ", err)
+	} else {
+		defer response.Body.Close()
+		status := response.StatusCode
+		log.Println("got response from " + universitiesMainUrl, "status", status)
+		if status == http.StatusOK {
+			if doc, err := html.Parse(response.Body); err != nil {
+				log.Println("invalid HTML from " + universitiesMainUrl, "error", err)
+			} else {
+				log.Println("HTML from " + universitiesMainUrl + " parsed successfully")
+				return searchCities(doc)
+			}
+		}
+	}
+
+	return nil
+}
+
+func searchCities(node *html.Node) map[int]string {
+	if isElem(node, "select") && getAttr(node, "name") == "city[]" {
+		cities := make(map[int]string)
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			if isElem(c, "option") {
+				key, err := strconv.Atoi(getAttr(c, "value"))
+				if err != nil {
+					log.Println("couldn't convert city key, got: " + getAttr(c, "value"))
+				}
+				var city string
+				splitted := strings.Split(c.FirstChild.Data, "(")
+				if len(splitted) > 1 {
+					cityWithBr := splitted[1]
+					city = cityWithBr[:len(cityWithBr) - 1]
+				} else {
+					city = splitted[0]
+				}
+
+				cities[key] = city
+			}
+		}
+
+		return cities
+	}
+
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		if cities := searchCities(c); cities != nil {
+			return cities
+		}
+	}
+
+	return nil
+}
+
 //func main() {
 //	// Pfors and Specs
 //	//profsBach, specs := parseProfsNSpecs(BachelorSpecialitiesSite)
@@ -1427,6 +1483,17 @@ func searchRatingQSList(node *html.Node) []*RatingQS {
 //	for _, uniRatingQS := range ratingQS {
 //		fmt.Println(*uniRatingQS)
 //	}
+//
+//	//// Cities
+//	//log.Println("Downloader started")
+//	//cities := parseCities()
+//	//if len(cities) != 0 {
+//	//	insertCities(cities)
+//	//}
+//	//fmt.Println(len(cities))
+//	//for k, c := range cities {
+//	//	fmt.Println(k, c)
+//	//}
 //}
 
 

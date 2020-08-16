@@ -2,6 +2,8 @@ package main
 
 import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
+	"log"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -56,6 +58,9 @@ func handleBackRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyb
 	} else if user.State == FindUniState {
 		text, findUniMenu := handleFindUniRequest(user.Query + "#" + data)
 		return text, findUniMenu
+	} else if user.State == UniState {
+		text, searchUniMenu := handleSearchUniRequest(data, user)
+		return text, searchUniMenu
 	}
 
 	text := "Добро пожаловать в бота для подбора университета!\n\n" +
@@ -132,9 +137,9 @@ func handleFindUniRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	unis := findUnisInDb(query, makeOffset(page))
 	text += makeTextUnis(unis)
 
-	rateQSMenu := makeUnisMenu(unisNum, unis, page)
+	unisMenu := makeUnisMenu(unisNum, unis, "findUniPage", "", page)
 
-	return text, rateQSMenu
+	return text, unisMenu
 }
 
 func handleProfsRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
@@ -369,4 +374,197 @@ func handleProgRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
 	progMenu := makeProgMenu(backPattern)
 
 	return text, progMenu
+}
+
+func handleUnisCompRequest(user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+	text := "Введите один или несколько критериев для получения подборки университетов\n"
+
+	if len(user.Eges) != 0 {
+		text += "\n*ЕГЭ:*\n" + makeTextEges(user.Eges, "    ")
+	}
+
+	if user.EntryTest {
+		text += "\n*Готов ко вступительным* " + makeEmoji(CheckEmoji)
+	}
+
+	if user.City != 0 {
+		city := getCityNameFromDb(user.City)
+		text += "\n*Город:* " + city
+	}
+
+	if user.ProfileId != 0 {
+		if user.SpecialityId != 0 {
+			spec := getSpecFromDb(strconv.Itoa(user.SpecialityId))
+			text += "\n*Специальность:* " + spec.Name + " (" + makeProfOrSpecCode(user.SpecialityId) + ")"
+		} else {
+			prof := getProfFromDb(strconv.Itoa(user.ProfileId))
+			text += "\n*Профиль:* " + prof.Name + " (" + makeProfOrSpecCode(user.ProfileId) + ")"
+		}
+	}
+
+	if user.Dormatary {
+		text += "\n*Общежитие* " + makeEmoji(CheckEmoji)
+	}
+
+	if user.MilitaryDep {
+		text += "\n*Военная кафедра* " + makeEmoji(CheckEmoji)
+	}
+
+	if user.Fee != math.MaxUint64 {
+		text += "\n*Максимальная цена обучения:* " + strconv.Itoa(int(user.Fee))
+	}
+
+	unisCompilationMenu := makeUnisCompilationMenu(user)
+
+	return text, unisCompilationMenu
+}
+
+func handleChangeOrClearRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+	ids := takeIds(data)
+	state, _ := strconv.Atoi(ids[0])
+	page := takePage(data)
+	text := "Измените или сбросьте"
+
+	switch state {
+	case FeeState:
+		text += " цену"
+	case CityState:
+		text += " город"
+	case ProfileState:
+		if user.SpecialityId != 0 {
+			text += " профиль/специальность"
+		} else {
+			text += " профиль"
+		}
+	case EgeState:
+		text += " ваши ЕГЭ\n\nВыбрано:\n" + makeTextEges(user.Eges, "")
+	case SubjState:
+		subjId, _ := strconv.Atoi(ids[1])
+		user.LastSubj = subjId
+		text += " ЕГЭ по предмету *" + getSubjNameFromDb(subjId) + "*"
+	}
+
+	changeMenu := makeChangeOrClearMenu(state, user, page)
+
+	return text, changeMenu
+}
+
+func handleCitiesRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+	text := "Выберите город обучения"
+
+	var backPattern string
+	page := takePage(data)
+	if user.City == 0 {
+		backPattern = "uni"
+	} else {
+		backPattern = "chOrCl&" + strconv.Itoa(CityState)
+	}
+	cities := getCitiesFromDb(makeOffset(page))
+	citiesNum := getCitiesNumFromDb()
+	citiesMenu := makeCitiesMenu(citiesNum, cities, backPattern, page)
+
+	return text, citiesMenu
+}
+
+func handleProfilesRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+	text := "*Выберите профиль обучения*\n\n"
+
+	var backPattern string
+	page := takePage(data)
+	if user.ProfileId == 0 {
+		backPattern = "uni"
+	} else {
+		backPattern = "chOrCl&" + strconv.Itoa(ProfileState)
+	}
+	profs := getProfsPageFromDb(makeOffset(page))
+	text += makeTextProfs(profs)
+	profsNum := getProfsNumFromDb()
+	profsMenu := makeProfsPageMenu(profsNum, profs, backPattern, page)
+
+	return text, profsMenu
+}
+
+func handleSpecOrNotRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+	text := "Выберите специальность или оставьте поиск только по профилю"
+	page := takePage(data)
+	profId := takeId(data)
+	specOrNotMenu := makeSpecOrNotMenu(page, profId)
+
+	return text, specOrNotMenu
+}
+
+func handleSpecialitiesRequest(data string) (string, tgbotapi.InlineKeyboardMarkup) {
+	text := "*Выберите специальность обучения*\n\n"
+
+	profId := takeId(data)
+	pages := takePages(data)
+	var pagesPattern, backPattern string
+	var curPage string
+	if len(pages) == 2 {
+		profsPage := pages[0]
+		pagesPattern = "#" + profsPage
+		backPattern = "proOrSpe&" + profId + "#" + profsPage
+		curPage = pages[1]
+	} else {
+		curPage = pages[0]
+		backPattern = "chOrCl&" + strconv.Itoa(ProfileState)
+	}
+
+	specs := getSpecsPageFromDb(makeOffset(curPage), profId)
+	text += makeTextSpecs(specs)
+	specsNum := getSpecsNumFromDb(profId)
+	specsMenu := makeSpecsPageMenu(specsNum, specs, profId, pagesPattern, backPattern, curPage)
+
+	return text, specsMenu
+}
+
+func handleEgesRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+	page := takePage(data)
+
+	var text string
+	isEges := false
+	if len(user.Eges) == 0 {
+		text = "*Выберите ваши ЕГЭ*\n\n"
+	} else {
+		isEges = true
+		text = "*Выберите или измените ваши ЕГЭ*\n\nУже выбрано:\n"
+		text += makeTextEges(user.Eges, "")
+	}
+
+	subjs := getSubjsFromDb(makeOffset(page), user)
+	subjsNum := getSubjsNumFromDb(user)
+	egesMenu := makeEgesMenu(subjsNum, subjs, isEges, page)
+
+	return text, egesMenu
+}
+
+func handleSubjRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+	text := "Введите баллы или оставьте поиск только предмету"
+	page := takePage(data)
+	subjId := takeId(data)
+	pointsOrNotMenu := makePointsOrNotMenu(page, subjId)
+
+	return text, pointsOrNotMenu
+}
+
+func handleSearchUniRequest(data string, user *UserInfo) (string, tgbotapi.InlineKeyboardMarkup) {
+	page := takePage(data)
+
+	innerQuery := makeSearchInnerQueryForDb(user)
+
+	unisNum := getSearchUnisNumFromDb(innerQuery)
+	log.Println("Num:", unisNum)
+	if unisNum == 0 {
+		text := "Не удалось подобрать вузы по выбранным критериям " + makeEmoji(CryingEmoji)
+		return text, makeMainBackMenu("uni")
+	}
+
+	text := "Результаты подбора вузов:\n\n"
+
+	unis := searchUnisInDb(innerQuery, makeOffset(page))
+	text += makeTextUnis(unis)
+
+	unisMenu := makeUnisMenu(unisNum, unis, "search", "uni", page)
+
+	return text, unisMenu
 }

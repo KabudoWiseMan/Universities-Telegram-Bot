@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
-	"math"
 	"strings"
 )
 
@@ -32,10 +30,4 @@ func substrBetween(value string, a string, b string) string {
 		return ""
 	}
 	return value[posFirstAdjusted:posLast]
-}
-
-func bytesToFloat(bytes []byte) float64 {
-	bits := binary.LittleEndian.Uint64(bytes)
-	float := math.Float64frombits(bits)
-	return float
 }

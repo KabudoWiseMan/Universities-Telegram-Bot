@@ -101,3 +101,12 @@ type UniversityQS struct {
 	Mark string
 }
 
+type City struct {
+	CityId int
+	Name string
+}
+
+type Subject struct {
+	SubjectId int
+	Name string
+}
