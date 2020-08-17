@@ -1,6 +1,9 @@
 package main
 
-import "math"
+import (
+	"math"
+	"time"
+)
 
 const (
 	NoState = 0
@@ -32,6 +35,7 @@ type UserInfo struct {
 	EntryTest bool
 	Eges []Ege
 	LastSubj int
+	LastSeen time.Time
 }
 
 func (usr *UserInfo) Clear() {
@@ -77,7 +81,7 @@ func (usr *UserInfo) AddEge(points uint64) bool {
 }
 
 type Users struct {
-	users map[int64]*UserInfo
+	Users map[int64]*UserInfo
 }
 
 func InitUsers() *Users {
@@ -85,7 +89,7 @@ func InitUsers() *Users {
 }
 
 func (usrs *Users) User(userId int64) *UserInfo {
-	if user, ok := usrs.users[userId]; ok {
+	if user, ok := usrs.Users[userId]; ok {
 		return user
 	} else {
 		newUser := &UserInfo {
@@ -93,12 +97,12 @@ func (usrs *Users) User(userId int64) *UserInfo {
 			Fee: math.MaxUint64,
 		}
 
-		usrs.users[userId] = newUser
+		usrs.Users[userId] = newUser
 
 		return newUser
 	}
 }
 
 func (usrs *Users) Delete(userId int64) {
-	delete(usrs.users, userId)
+	delete(usrs.Users, userId)
 }

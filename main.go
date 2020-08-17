@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 func MainHandler(resp http.ResponseWriter, _ *http.Request) {
@@ -17,6 +18,26 @@ func MainHandler(resp http.ResponseWriter, _ *http.Request) {
 
 func isAdmin(chatID int64) bool {
 	return chatID == CreatorID
+}
+
+func monitorUsers(ticker *time.Ticker, users *Users) {
+	for {
+		select {
+		case <-ticker.C:
+			var toDelete []int64
+			for key, user := range users.Users {
+				time.Now().Minute()
+				time.Sleep(time.Second)
+				if time.Since(user.LastSeen).Hours() > 1 {
+					toDelete = append(toDelete, key)
+				}
+			}
+
+			for _, toDelId := range toDelete {
+				users.Delete(toDelId)
+			}
+		}
+	}
 }
 
 func main() {
@@ -52,6 +73,9 @@ func main() {
 
 	users := InitUsers()
 
+	ticker := time.NewTicker(30 * time.Minute)
+	go monitorUsers(ticker, users)
+
 	for {
 		select {
 		case update := <- updates:
@@ -62,6 +86,7 @@ func main() {
 				msg := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID, "")
 
 				user := users.User(chatID)
+				user.LastSeen = time.Now()
 
 				var menu tgbotapi.InlineKeyboardMarkup
 				var text string
@@ -185,6 +210,8 @@ func main() {
 
 				log.Printf("[%s u: %d c: %d] %s\n", update.Message.From.UserName, userID, chatID, update.Message.Text)
 
+				user := users.User(chatID)
+
 				msg := tgbotapi.NewMessage(chatID, "")
 				msg.ParseMode = "markdown"
 				if update.Message.IsCommand() {
@@ -200,7 +227,7 @@ func main() {
 					continue
 				}
 
-				user := users.User(chatID)
+				user.LastSeen = time.Now()
 
 				if user.State == UniState {
 					msg.Text = "Что-то здесь не так, проверьте, что вы нажали нужную кнопку" + makeEmoji(WinkEmoji)
