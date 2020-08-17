@@ -26,8 +26,6 @@ func monitorUsers(ticker *time.Ticker, users *Users) {
 		case <-ticker.C:
 			var toDelete []int64
 			for key, user := range users.Users {
-				time.Now().Minute()
-				time.Sleep(time.Second)
 				if time.Since(user.LastSeen).Hours() > 1 {
 					toDelete = append(toDelete, key)
 				}
