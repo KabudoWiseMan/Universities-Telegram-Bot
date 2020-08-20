@@ -353,11 +353,11 @@ func searchUniversity(node *html.Node, uniSite string) *University {
 			}
 		}
 
-		title, dormitary, militaryDep, description := searchUniOrFacInfo(cs[mainBlockIdx])
+		name, dormitary, militaryDep, description := searchUniOrFacInfo(cs[mainBlockIdx])
 		phone, adress, email, site, _ := searchUniOrFacInfo2(cs[wrapIdx])
 		uni := &University{
 			UniversityId: universityId,
-			Name: title,
+			Name: name,
 			Description: description,
 			Site: site,
 			Email: email,
@@ -381,14 +381,14 @@ func searchUniversity(node *html.Node, uniSite string) *University {
 
 func searchUniOrFacInfo(node *html.Node) (string, bool, bool, string) {
 	if isDiv(node, "mainSlider-left") {
-		var title, description string
+		var name, description string
 		var dormitary, militaryDep bool
 
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
 			if isElem(c, "h1") {
 				for cs := c.FirstChild; cs != nil; cs = cs.NextSibling {
 					if isText(cs) {
-						title = strings.TrimSpace(cs.Data)
+						name = strings.TrimSpace(cs.Data)
 						break
 					}
 				}
@@ -409,12 +409,12 @@ func searchUniOrFacInfo(node *html.Node) (string, bool, bool, string) {
 			}
 		}
 
-		return title, dormitary, militaryDep, description
+		return name, dormitary, militaryDep, description
 	}
 
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		if title, dorm, milDep, desc := searchUniOrFacInfo(c); title != "" {
-			return title, dorm, milDep, desc
+		if name, dorm, milDep, desc := searchUniOrFacInfo(c); name != "" {
+			return name, dorm, milDep, desc
 		}
 	}
 
@@ -483,16 +483,12 @@ func searchUniOrFacInfo2(node *html.Node) (string, string, string, string, bool)
 	return "", "", "", "", false
 }
 
-func parseFaculties(db *sql.DB, unis []*University) []*Faculty {
+func parseFaculties(unis []*University) []*Faculty {
 	var wg sync.WaitGroup
 
 	var facs []*Faculty
 
 	facsString := "podrazdeleniya"
-
-	if len(unis) == 0 {
-		unis, _ = getUnisIdsNamesFromDb(db, false)
-	}
 
 	unisNum := len(unis)
 	pace := 15
@@ -616,11 +612,11 @@ func searchFaculty(node *html.Node, facSite string, uniId int) *Faculty {
 			}
 		}
 
-		title, _, _, description := searchUniOrFacInfo(cs[mainBlockIdx])
+		name, _, _, description := searchUniOrFacInfo(cs[mainBlockIdx])
 		phone, adress, email, site, _ := searchUniOrFacInfo2(cs[wrapIdx])
 		fac := &Faculty{
 			FacultyId: facultyId,
-			Name: title,
+			Name: name,
 			Description: description,
 			Site: site,
 			Email: email,
@@ -670,7 +666,7 @@ func searchSubjs(node *html.Node) map[string]int {
 
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
 			if isElem(c, "label") {
-				name := getAttr(c, "title")
+				name := getAttr(c, "name")
 				if name == "Вступительные" {
 					continue
 				}
@@ -693,22 +689,12 @@ func searchSubjs(node *html.Node) map[string]int {
 	return nil
 }
 
-func parsePrograms(db *sql.DB, facs []*Faculty, specs []*Speciality, subjs map[string]int) ([]*Program, []*MinEgePoints, []*EntranceTest) {
+func parsePrograms(facs []*Faculty, specs []*Speciality, subjs map[string]int) ([]*Program, []*MinEgePoints, []*EntranceTest) {
 	var wg sync.WaitGroup
 
 	var progs []*Program
 	var minPoints []*MinEgePoints
 	var entrTests []*EntranceTest
-
-	if len(facs) == 0 {
-		facs, _ = getFacsIdsFromDb(db)
-	}
-	if len(specs) == 0 {
-		specs, _ = getSpecsIdsFromDb(db)
-	}
-	if len(subjs) == 0 {
-		subjs, _ = getRevSubjsMapFromDb(db)
-	}
 
 	specsIds := make(map[int]bool)
 	for _, spec := range specs {
@@ -862,7 +848,7 @@ func searchPrograms(node *html.Node, facId int, specsIds map[int]bool, subjs map
 				for cs := c.FirstChild; cs != nil; cs = cs.NextSibling {
 					if isDiv(cs, "itemSpecAll") {
 						for css := cs.FirstChild; css != nil; css = css.NextSibling {
-							if isDiv(css, "col-md-7 itemSpecAllTitle") {
+							if isDiv(css, "col-md-7 itemSpecAllname") {
 								for csss := css.FirstChild; csss != nil; csss = csss.NextSibling {
 									if isDiv(csss, "itemSpecAllinfo") {
 										for cssss := csss.FirstChild; cssss != nil; cssss = cssss.NextSibling {
@@ -1210,7 +1196,7 @@ func searchProgInfo2(node *html.Node, programId uuid.UUID, subjs map[string]int)
 						i++
 					}
 				}
-			} else if isDiv(c, "mainTitleBlTelo") && getAttr(c, "id") == "chemy" {
+			} else if isDiv(c, "mainnameBlTelo") && getAttr(c, "id") == "chemy" {
 				var nodes []*html.Node
 				for cs := c.NextSibling; cs != nil; cs = cs.NextSibling {
 					nodes = append(nodes, cs)
@@ -1442,133 +1428,6 @@ func searchCities(node *html.Node) map[int]string {
 	}
 
 	return nil
-}
-
-func main() {
-	db, _ := connectToDb()
-	defer db.Close()
-	//	// Pfors and Specs
-	//	profsBach, specs := parseProfsNSpecs(BachelorSpecialitiesSite)
-	//	profsSpec, specsSpec := parseProfsNSpecs(SpecialistSpecialitiesSite)
-	//
-	//	profsMap := make(map[Profile]bool)
-	//	for _, p := range profsBach {
-	//		profsMap[*p] = true
-	//	}
-	//	for _, p := range profsSpec {
-	//		profsMap[*p] = true
-	//	}
-	//	profsBach = nil
-	//	profsSpec = nil
-	//
-	//	var profs []*Profile
-	//	for profM, _ := range profsMap {
-	//		prof := &Profile{
-	//			ProfileId: profM.ProfileId,
-	//			Name: profM.Name,
-	//		}
-	//		profs = append(profs, prof)
-	//	}
-	//	profsMap = nil
-	//
-	//	specs = append(specs, specsSpec...)
-	//	specsSpec = nil
-	//
-	////	updateProfsNSpecs(profs, specs)
-	//	fmt.Println("Profiles:\n")
-	//	for _, prof := range profs {
-	//		fmt.Println(*prof)
-	//	}
-	//	fmt.Println("\n\nSpecialities:\n")
-	//	for _, spec := range specs {
-	//		fmt.Println(*spec)
-	//	}
-	//
-	//// Universities
-	//fmt.Println("Downloader started")
-	//unis := parseUniversities()
-	//fmt.Println(len(unis))
-	//if len(unis) != 0 {
-	//	updateUnis(db, unis)
-	//}
-	//for _, uni := range unis {
-	//	fmt.Println(*uni)
-	//}
-	//
-	//	// Faculties
-	//	log.Println("Downloader started")
-	//	var unis []*University // needs to be deleted
-	//	facs := parseFaculties(db, unis)
-	//	//if len(facs) != 0 {
-	//	//	updateFacs(facs)
-	//	//}
-	//	for _, fac := range facs {
-	//		fmt.Println(*fac)
-	//	}
-	//
-	//	// Subjects
-	//	log.Println("Downloader started")
-	//	subjs := parseSubjs()
-	//	//if len(subjs) != 0 {
-	//	//	updateSubjs(subjs)
-	//	//}
-	//	fmt.Println("Subjects:\n")
-	//	for subj, k := range subjs {
-	//		fmt.Println(k, subj)
-	//	}
-	//
-	//	// Programs
-	//	//f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
-	//	//if err != nil {
-	//	//	log.Fatalf("error opening file: %v", err)
-	//	//}
-	//	//defer f.Close()
-	//	//log.SetOutput(f)
-	//
-	//	log.Println("Downloader started")
-	//	var facs []*Faculty // needs to be deleted
-	//	var specs []*Speciality // needs to be deleted
-	//	var subjs map[string]int // needs to be deleted
-	//	progs, minPoints, entrTests := parsePrograms(db, facs, specs, subjs)
-	//	//if len(progs) != 0 {
-	//	//	updateProgsNInfo(progs, minPoints, entrTests)
-	//	//}
-	//	fmt.Println("Programs:\n")
-	//	fmt.Println(len(progs))
-	//	for _, prog := range progs {
-	//		fmt.Println(*prog)
-	//	}
-	//	fmt.Println("\n\nMin points:\n")
-	//	fmt.Println(len(minPoints))
-	//	for _, minPoint := range minPoints {
-	//		fmt.Println(*minPoint)
-	//	}
-	//	fmt.Println("\n\nEntrance test:\n")
-	//	fmt.Println(len(entrTests))
-	//	for _, entrTest := range entrTests {
-	//		fmt.Println(*entrTest)
-	//	}
-	//
-	//	// Rating QS
-	//	log.Println("Downloader started")
-	//	ratingQS := parseRatingQS()
-	//	//if len(ratingQS) != 0 {
-	//	//	updateRatingQS(ratingQS)
-	//	//}
-	//	for _, uniRatingQS := range ratingQS {
-	//		fmt.Println(*uniRatingQS)
-	//	}
-	//
-	//	// Cities
-	//	log.Println("Downloader started")
-	//	cities := parseCities()
-	//	//if len(cities) != 0 {
-	//	//	updateCities(cities)
-	//	//}
-	//	fmt.Println(len(cities))
-	//	for k, c := range cities {
-	//		fmt.Println(k, c)
-	//	}
 }
 
 

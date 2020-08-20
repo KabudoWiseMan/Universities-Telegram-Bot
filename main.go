@@ -4,7 +4,6 @@ import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 	"log"
 	"math"
-	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -14,9 +13,10 @@ import (
 	"time"
 )
 
-func MainHandler(resp http.ResponseWriter, _ *http.Request) {
-	resp.Write([]byte("Hi there! I'm Choose University bot!"))
-}
+// ***FOR WEBHOOK***
+//func MainHandler(resp http.ResponseWriter, _ *http.Request) {
+//	resp.Write([]byte("Hi there! I'm Choose University bot!"))
+//}
 
 func isAdmin(chatID int64) bool {
 	return chatID == CreatorID
@@ -40,38 +40,6 @@ func monitorUsers(ticker *time.Ticker, users *Users) {
 	}
 }
 
-func updateDb(wg *sync.WaitGroup, ticker *time.Ticker) {
-	for {
-		select {
-		case <-ticker.C:
-			wg.Add(1)
-			db, err := connectToDb()
-			if err != nil {
-				log.Println("couldn't connected to data base for update", err)
-				wg.Done()
-				continue
-			}
-			log.Println("Successfully connected to data base for update")
-			defer closeDb(db)
-
-
-		}
-	}
-}
-
-func manuallyUpdateDb(wg *sync.WaitGroup) {
-	defer wg.Done()
-	db, err := connectToDb()
-	if err != nil {
-		log.Println("couldn't connected to data base for update", err)
-		return
-	}
-	log.Println("Successfully connected to data base for update")
-	defer closeDb(db)
-
-
-}
-
 func main() {
 	bot, err := tgbotapi.NewBotAPI(BotToken)
 	if err != nil {
@@ -91,9 +59,10 @@ func main() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	//updates := bot.ListenForWebhook("/" + bot.Token)
 	updates, err := bot.GetUpdatesChan(u)
 
+	// ***FOR WEBHOOK***
+	//updates := bot.ListenForWebhook("/" + bot.Token)
 	//http.HandleFunc("/", MainHandler)
 	//go func() {
 	//	panic(http.ListenAndServe(":" + os.Getenv("PORT"), nil))
@@ -254,14 +223,6 @@ func main() {
 						msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
 							"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
 						msg.ReplyMarkup = mainMenu
-					case "update":
-						if isAdmin(chatID) {
-							msg.Text = "Обновление началось"
-							wg.Add(1)
-							go manuallyUpdateDb(&wg)
-						} else {
-							msg.Text = "У меня нет такой команды"
-						}
 					default:
 						msg.Text = "У меня нет такой команды"
 					}

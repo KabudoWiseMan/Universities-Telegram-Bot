@@ -36,7 +36,7 @@ func closeDb(db io.Closer) {
 	}
 }
 
-func updateUnis(db *sql.DB, unis []*University) error {
+func updateUnisInDb(db *sql.DB, unis []*University) error {
 	unisTmpTableQuery := "CREATE TEMPORARY TABLE temp_university (" +
 		"university_id INT PRIMARY KEY, " +
 		"name VARCHAR(300) NOT NULL, " +
@@ -107,7 +107,7 @@ func updateUnis(db *sql.DB, unis []*University) error {
 	return nil
 }
 
-func updateProfsNSpecs(db *sql.DB, profs []*Profile, specs []*Speciality) error {
+func updateProfsNSpecsInDb(db *sql.DB, profs []*Profile, specs []*Speciality) error {
 	profsTmpTableQuery := "CREATE TEMPORARY TABLE temp_profile (" +
 		"profile_id INT PRIMARY KEY, " +
 		"name VARCHAR(200) NOT NULL" +
@@ -255,7 +255,7 @@ func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) ([]*University, error) {
 	return unis, nil
 }
 
-func updateFacs(db *sql.DB, facs []*Faculty) error {
+func updateFacsInDb(db *sql.DB, facs []*Faculty) error {
 	facsTmpTableQuery := "CREATE TEMPORARY TABLE temp_faculty (" +
 		"faculty_id INT PRIMARY KEY, " +
 		"name VARCHAR(300) NOT NULL, " +
@@ -350,7 +350,7 @@ func getFacsIdsFromDb(db *sql.DB) ([]*Faculty, error) {
 	return facs, nil
 }
 
-func updateSubjs(db *sql.DB, subjs map[string]int) error {
+func updateSubjsInDb(db *sql.DB, subjs map[string]int) error {
 	subjsTmpTableQuery := "CREATE TEMPORARY TABLE temp_subject (" +
 		"subject_id SMALLINT PRIMARY KEY, " +
 		"name VARCHAR(100) NOT NULL" +
@@ -494,7 +494,7 @@ func insertTempEntrTests(db *sql.DB, entrTests []*EntranceTest) error {
 	return nil
 }
 
-func updateProgsNInfo(db *sql.DB, progs []*Program, minEgePoints []*MinEgePoints, entrTests []*EntranceTest) error {
+func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePoints, entrTests []*EntranceTest) error {
 	progsTmpTableQuery := "CREATE TEMPORARY TABLE temp_program (" +
 		"program_id uuid PRIMARY KEY, " +
 		"program_num INT NOT NULL, " +
@@ -697,7 +697,7 @@ func getUniIdFromDb(db *sql.DB, uniSite string) (int, error) {
 	return university_id, nil
 }
 
-func updateRatingQS(db *sql.DB, ratingQS []*RatingQS) error {
+func updateRatingQSInDb(db *sql.DB, ratingQS []*RatingQS) error {
 	ratingQSTmpTableQuery := "CREATE TEMPORARY TABLE temp_rating_qs (" +
 		"university_id INT PRIMARY KEY, " +
 		"high_mark SMALLINT NOT NULL, " +
@@ -750,7 +750,7 @@ func updateRatingQS(db *sql.DB, ratingQS []*RatingQS) error {
 	return nil
 }
 
-func updateCities(db *sql.DB, cities map[int]string) error {
+func updateCitiesInDb(db *sql.DB, cities map[int]string) error {
 	citiesTmpTableQuery := "CREATE TEMPORARY TABLE temp_city (" +
 		"city_id SMALLINT PRIMARY KEY, " +
 		"name VARCHAR(100)" +

@@ -31,3 +31,11 @@ func substrBetween(value string, a string, b string) string {
 	}
 	return value[posFirstAdjusted:posLast]
 }
+
+func getElemFromMap(m map[int]string) string {
+	for _, v := range m {
+		return v
+	}
+
+	return ""
+}

@@ -45,7 +45,6 @@ func wikiSearch(query string) string {
 
 			uniSite := parseUniWikiUrl(uniWikiUrl)
 			return uniSite
-			//return uniWikiUrl
 		}
 	}
 
