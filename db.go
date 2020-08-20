@@ -36,7 +36,22 @@ func closeDb(db io.Closer) {
 	}
 }
 
-func insertUnis(db *sql.DB, unis []*University) error {
+func updateUnis(db *sql.DB, unis []*University) error {
+	unisTmpTableQuery := "CREATE TEMPORARY TABLE temp_university (" +
+		"university_id INT PRIMARY KEY, " +
+		"name VARCHAR(300) NOT NULL, " +
+		"description TEXT NOT NULL, " +
+		"site VARCHAR(200) NOT NULL, " +
+		"email VARCHAR(254) NOT NULL, " +
+		"adress VARCHAR(400) NOT NULL, " +
+		"phone VARCHAR(300) NOT NULL, " +
+		"military_dep BOOLEAN NOT NULL, " +
+		"dormitary BOOLEAN NOT NULL" +
+		");"
+	if _, err := db.Exec(unisTmpTableQuery); err != nil {
+		return err
+	}
+
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, uni := range unis {
@@ -52,15 +67,65 @@ func insertUnis(db *sql.DB, unis []*University) error {
 		valueArgs = append(valueArgs, uni.Dormitary)
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO university (university_id, name, description, site, email, adress, phone, military_dep, dormitary) VALUES %s;", strings.Join(valueStrings, ","))
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_university (university_id, name, description, site, email, adress, phone, military_dep, dormitary) VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateUnisQuery := "INSERT INTO university (university_id, name, description, site, email, adress, phone, military_dep, dormitary) " +
+		"SELECT * FROM temp_university " +
+		"ON CONFLICT (university_id) DO UPDATE " +
+		"SET name = EXCLUDED.name, " +
+		"description = EXCLUDED.description, " +
+		"site = EXCLUDED.site, " +
+		"email = EXCLUDED.email, " +
+		"adress = EXCLUDED.adress, " +
+		"phone = EXCLUDED.phone, " +
+		"military_dep = EXCLUDED.military_dep, " +
+		"dormitary = EXCLUDED.dormitary;"
+	if _, err := tx.Exec(updateUnisQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteUnisQuery := "DELETE FROM university WHERE university_id NOT IN (SELECT university_id FROM temp_university);"
+	if _, err := tx.Exec(deleteUnisQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
 		return err
 	}
 	
 	return nil
 }
 
-func insertProfsNSpecs(db *sql.DB, profs []*Profile, specs []*Speciality) error {
+func updateProfsNSpecs(db *sql.DB, profs []*Profile, specs []*Speciality) error {
+	profsTmpTableQuery := "CREATE TEMPORARY TABLE temp_profile (" +
+		"profile_id INT PRIMARY KEY, " +
+		"name VARCHAR(200) NOT NULL" +
+		");"
+	if _, err := db.Exec(profsTmpTableQuery); err != nil {
+		return err
+	}
+
+	specsTmpTableQuery := "CREATE TEMPORARY TABLE temp_speciality (" +
+		"speciality_id INT PRIMARY KEY, " +
+		"name VARCHAR(200) NOT NULL, " +
+		"bachelor BOOLEAN NOT NULL, " +
+		"profile_id INT NOT NULL" +
+		");"
+	if _, err := db.Exec(specsTmpTableQuery); err != nil {
+		return err
+	}
+
 	var valueStringsProfs []string
 	var valueArgsProfs []interface{}
 	for i, p := range profs {
@@ -69,7 +134,7 @@ func insertProfsNSpecs(db *sql.DB, profs []*Profile, specs []*Speciality) error 
 		valueArgsProfs = append(valueArgsProfs, p.Name)
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO profile VALUES %s;", strings.Join(valueStringsProfs, ","))
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_profile VALUES %s;", strings.Join(valueStringsProfs, ","))
 	if _, err := db.Exec(sqlStmt, valueArgsProfs...); err != nil {
 		return err
 	}
@@ -85,8 +150,50 @@ func insertProfsNSpecs(db *sql.DB, profs []*Profile, specs []*Speciality) error 
 		i++
 	}
 
-	sqlStmt2 := fmt.Sprintf("INSERT INTO speciality VALUES %s;", strings.Join(valueStringsSpecs, ","))
+	sqlStmt2 := fmt.Sprintf("INSERT INTO temp_speciality VALUES %s;", strings.Join(valueStringsSpecs, ","))
 	if _, err := db.Exec(sqlStmt2, valueArgsSpecs...); err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateProfsQuery := "INSERT INTO profile " +
+		"SELECT * FROM temp_profile " +
+		"ON CONFLICT (profile_id) DO UPDATE " +
+		"SET name = EXCLUDED.name;"
+	if _, err := tx.Exec(updateProfsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteProfsQuery := "DELETE FROM profile WHERE profile_id NOT IN (SELECT profile_id FROM temp_profile);"
+	if _, err := tx.Exec(deleteProfsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	updateSpecsQuery := "INSERT INTO speciality " +
+		"SELECT * FROM temp_speciality " +
+		"ON CONFLICT (speciality_id) DO UPDATE " +
+		"SET name = EXCLUDED.name, " +
+		"bachelor = EXCLUDED.bachelor " +
+		"profile_id = EXCLUDED.profile_id;"
+	if _, err := tx.Exec(updateSpecsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteSpecsQuery := "DELETE FROM speciality WHERE speciality_id NOT IN (SELECT speciality_id FROM temp_speciality);"
+	if _, err := tx.Exec(deleteSpecsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
 		return err
 	}
 	
@@ -148,7 +255,21 @@ func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) ([]*University, error) {
 	return unis, nil
 }
 
-func insertFacs(db *sql.DB, facs []*Faculty) error {
+func updateFacs(db *sql.DB, facs []*Faculty) error {
+	facsTmpTableQuery := "CREATE TEMPORARY TABLE temp_faculty (" +
+		"faculty_id INT PRIMARY KEY, " +
+		"name VARCHAR(300) NOT NULL, " +
+		"description TEXT NOT NULL, " +
+		"site VARCHAR(200) NOT NULL, " +
+		"email VARCHAR(254) NOT NULL, " +
+		"adress VARCHAR(400) NOT NULL, " +
+		"phone VARCHAR(300) NOT NULL, " +
+		"university_id INT NOT NULL" +
+		");"
+	if _, err := db.Exec(facsTmpTableQuery); err != nil {
+		return err
+	}
+
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, fac := range facs {
@@ -163,8 +284,38 @@ func insertFacs(db *sql.DB, facs []*Faculty) error {
 		valueArgs = append(valueArgs, fac.UniversityId)
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO faculty VALUES %s;", strings.Join(valueStrings, ","))
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_faculty VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateFacsQuery := "INSERT INTO faculty " +
+		"SELECT * FROM temp_faculty " +
+		"ON CONFLICT (faculty_id) DO UPDATE " +
+		"SET name = EXCLUDED.name, " +
+		"description = EXCLUDED.description, " +
+		"site = EXCLUDED.site, " +
+		"email = EXCLUDED.email, " +
+		"adress = EXCLUDED.adress, " +
+		"university_id = EXECUTED.university_id;"
+	if _, err := tx.Exec(updateFacsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteFacsQuery := "DELETE FROM faculty WHERE faculty_id NOT IN (SELECT faculty_id FROM temp_faculty);"
+	if _, err := tx.Exec(deleteFacsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
 		return err
 	}
 	
@@ -199,7 +350,15 @@ func getFacsIdsFromDb(db *sql.DB) ([]*Faculty, error) {
 	return facs, nil
 }
 
-func insertSubjs(db *sql.DB, subjs map[string]int) error {
+func updateSubjs(db *sql.DB, subjs map[string]int) error {
+	subjsTmpTableQuery := "CREATE TEMPORARY TABLE temp_subject (" +
+		"subject_id SMALLINT PRIMARY KEY, " +
+		"name VARCHAR(100) NOT NULL" +
+		");"
+	if _, err := db.Exec(subjsTmpTableQuery); err != nil {
+		return err
+	}
+
 	var valueStringsSubjs []string
 	var valueArgsSubjs []interface{}
 	i := 0
@@ -210,8 +369,33 @@ func insertSubjs(db *sql.DB, subjs map[string]int) error {
 		i++
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO subject VALUES %s;", strings.Join(valueStringsSubjs, ","))
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_subject VALUES %s;", strings.Join(valueStringsSubjs, ","))
 	if _, err := db.Exec(sqlStmt, valueArgsSubjs...); err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateSubjsQuery := "INSERT INTO subject " +
+		"SELECT * FROM temp_subject " +
+		"ON CONFLICT (subject_id) DO UPDATE " +
+		"SET name = EXCLUDED.name;"
+	if _, err := tx.Exec(updateSubjsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteSubjsQuery := "DELETE FROM subject WHERE subject_id NOT IN (SELECT subject_id FROM temp_subject);"
+	if _, err := tx.Exec(deleteSubjsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
 		return err
 	}
 
@@ -244,7 +428,7 @@ func getRevSubjsMapFromDb(db *sql.DB) (map[string]int, error) {
 	return subjs, nil
 }
 
-func insertProgs(tx *sql.Tx, progs []*Program) error {
+func insertTempProgs(db *sql.DB, progs []*Program) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, prog := range progs {
@@ -266,16 +450,15 @@ func insertProgs(tx *sql.Tx, progs []*Program) error {
 		valueArgs = append(valueArgs, prog.SpecialityId)
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO program VALUES %s;", strings.Join(valueStrings, ","))
-	if _, err := tx.Exec(sqlStmt, valueArgs...); err != nil {
-		tx.Rollback()
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_program VALUES %s;", strings.Join(valueStrings, ","))
+	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func insertMinPoints(tx *sql.Tx, minEgePoints []*MinEgePoints) error {
+func insertTempMinPoints(db *sql.DB, minEgePoints []*MinEgePoints) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, minPoints := range minEgePoints {
@@ -285,16 +468,15 @@ func insertMinPoints(tx *sql.Tx, minEgePoints []*MinEgePoints) error {
 		valueArgs = append(valueArgs, minPoints.MinPoints)
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO min_ege_points VALUES %s;", strings.Join(valueStrings, ","))
-	if _, err := tx.Exec(sqlStmt, valueArgs...); err != nil {
-		tx.Rollback()
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_min_ege_points VALUES %s;", strings.Join(valueStrings, ","))
+	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func insertEntrTests(tx *sql.Tx, entrTests []*EntranceTest) error {
+func insertTempEntrTests(db *sql.DB, entrTests []*EntranceTest) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, entrTest := range entrTests {
@@ -304,26 +486,138 @@ func insertEntrTests(tx *sql.Tx, entrTests []*EntranceTest) error {
 		valueArgs = append(valueArgs, entrTest.MinPoints)
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO entrance_test VALUES %s;", strings.Join(valueStrings, ","))
-	if _, err := tx.Exec(sqlStmt, valueArgs...); err != nil {
-		tx.Rollback()
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_entrance_test VALUES %s;", strings.Join(valueStrings, ","))
+	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func insertProgsNInfo(db *sql.DB, progs []*Program, minEgePoints []*MinEgePoints, entrTests []*EntranceTest) error {
+func updateProgsNInfo(db *sql.DB, progs []*Program, minEgePoints []*MinEgePoints, entrTests []*EntranceTest) error {
+	progsTmpTableQuery := "CREATE TEMPORARY TABLE temp_program (" +
+		"program_id uuid PRIMARY KEY, " +
+		"program_num INT NOT NULL, " +
+		"name VARCHAR(400) NOT NULL, " +
+		"description TEXT NOT NULL, " +
+		"free_places SMALLINT NOT NULL, " +
+		"paid_places SMALLINT NOT NULL, " +
+		"fee MONEY NOT NULL, " +
+		"free_pass_points SMALLINT NOT NULL, " +
+		"paid_pass_points SMALLINT NOT NULL, " +
+		"study_form VARCHAR(200) NOT NULL, " +
+		"study_language VARCHAR(200) NOT NULL, " +
+		"study_base VARCHAR(200) NOT NULL, " +
+		"study_years VARCHAR(250) NOT NULL, " +
+		"faculty_id INT NOT NULL, " +
+		"speciality_id INT NOT NULL, " +
+		"UNIQUE (faculty_id, program_num)" +
+		");"
+	if _, err := db.Exec(progsTmpTableQuery); err != nil {
+		return err
+	}
+
+	minPointsTmpTableQuery := "CREATE TEMPORARY TABLE temp_min_ege_points (" +
+		"program_id uuid NOT NULL, " +
+		"subject_id SMALLINT NOT NULL, " +
+		"min_points SMALLINT NOT NULL, " +
+		"PRIMARY KEY (program_id, subject_id), " +
+		"FOREIGN KEY (program_id) REFERENCES temp_program(program_id) ON UPDATE CASCADE" +
+		");"
+	if _, err := db.Exec(minPointsTmpTableQuery); err != nil {
+		return err
+	}
+
+	entrTestsTmpTableQuery := "CREATE TEMPORARY TABLE temp_entrance_test (" +
+		"program_id uuid NOT NULL, " +
+		"test_name VARCHAR(100) NOT NULL, " +
+		"min_points SMALLINT NOT NULL, " +
+		"PRIMARY KEY (program_id, test_name), " +
+		"FOREIGN KEY (program_id) REFERENCES temp_program(program_id) ON UPDATE CASCADE" +
+		");"
+	if _, err := db.Exec(entrTestsTmpTableQuery); err != nil {
+		return err
+	}
+
+	if err := insertTempProgs(db, progs); err != nil {
+		return err
+	}
+	if err := insertTempMinPoints(db, minEgePoints); err != nil {
+		return err
+	}
+	if err := insertTempEntrTests(db, entrTests); err != nil {
+		return err
+	}
+
+	matchProgramIdsQuery := "UPDATE temp_program tp " +
+		"SET tp.program_id = p.program_id " +
+		"FROM program p " +
+		"WHERE tp.program_num = p.program_num AND tp.faculty_id = p.faculty_id;"
+	if _, err := db.Exec(matchProgramIdsQuery); err != nil {
+		return err
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
 
-	insertProgs(tx, progs)
-	insertMinPoints(tx, minEgePoints)
+	updateProgsQuery := "INSERT INTO program " +
+		"SELECT * FROM temp_program " +
+		"ON CONFLICT (program_id) DO UPDATE " +
+		"SET program_num = EXCLUDED.program_num, " +
+		"name = EXCLUDED.name, " +
+		"description = EXCLUDED.description, " +
+		"free_places = EXCLUDED.free_places, " +
+		"paid_places = EXCLUDED.paid_places, " +
+		"fee = EXCLUDED.fee, " +
+		"free_pass_points = EXCLUDED.free_pass_points, " +
+		"paid_pass_points = EXCLUDED.paid_pass_points, " +
+		"study_form = EXCLUDED.study_form, " +
+		"study_language = EXCLUDED.study_language, " +
+		"study_base = EXCLUDED.study_base, " +
+		"study_years = EXCLUDED.study_years, " +
+		"faculty_id = EXCLUDED.faculty_id, " +
+		"speciality_id = EXCLUDED.speciality_id;"
+	if _, err := tx.Exec(updateProgsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
 
-	if len(entrTests) != 0 {
-		insertEntrTests(tx, entrTests)
+	deleteProgsQuery := "DELETE FROM program WHERE program_id NOT IN (SELECT program_id FROM temp_program);"
+	if _, err := tx.Exec(deleteProgsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	updateMinPointsQuery := "INSERT INTO min_ege_points " +
+		"SELECT * FROM temp_min_ege_points " +
+		"ON CONFLICT (program_id, subject_id) DO UPDATE " +
+		"SET min_points = EXCLUDED.min_points;"
+	if _, err := tx.Exec(updateMinPointsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteMinPointsQuery := "DELETE FROM min_ege_points WHERE (program_id, subject_id) NOT IN (SELECT program_id, subject_id FROM temp_min_ege_points);"
+	if _, err := tx.Exec(deleteMinPointsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	updateEntrTestsQuery := "INSERT INTO entrance_test " +
+		"SELECT * FROM temp_entrance_test " +
+		"ON CONFLICT (program_id, test_name) DO UPDATE " +
+		"SET min_points = EXCLUDED.min_points;"
+	if _, err := tx.Exec(updateEntrTestsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteEntrTestsQuery := "DELETE FROM entrance_test WHERE (program_id, test_name) NOT IN (SELECT program_id, test_name FROM temp_entrance_test);"
+	if _, err := tx.Exec(deleteEntrTestsQuery); err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	err = tx.Commit()
@@ -403,7 +697,16 @@ func getUniIdFromDb(db *sql.DB, uniSite string) (int, error) {
 	return university_id, nil
 }
 
-func insertRatingQS(db *sql.DB, ratingQS []*RatingQS) error {
+func updateRatingQS(db *sql.DB, ratingQS []*RatingQS) error {
+	ratingQSTmpTableQuery := "CREATE TEMPORARY TABLE temp_rating_qs (" +
+		"university_id INT PRIMARY KEY, " +
+		"high_mark SMALLINT NOT NULL, " +
+		"low_mark SMALLINT NOT NULL" +
+		");"
+	if _, err := db.Exec(ratingQSTmpTableQuery); err != nil {
+		return err
+	}
+
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, uniRatingQs := range ratingQS {
@@ -413,15 +716,49 @@ func insertRatingQS(db *sql.DB, ratingQS []*RatingQS) error {
 		valueArgs = append(valueArgs, uniRatingQs.LowMark)
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO rating_qs VALUES %s;", strings.Join(valueStrings, ","))
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_rating_qs VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateRatingQSQuery := "INSERT INTO rating_qs " +
+		"SELECT * FROM temp_rating_qs " +
+		"ON CONFLICT (university_id) DO UPDATE " +
+		"SET high_mark = EXCLUDED.high_mark, " +
+		"low_mark = EXCLUDED.low_mark;"
+	if _, err := tx.Exec(updateRatingQSQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteRatingQSQuery := "DELETE FROM rating_qs WHERE university_id NOT IN (SELECT university_id FROM temp_rating_qs);"
+	if _, err := tx.Exec(deleteRatingQSQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func insertCities(db *sql.DB, cities map[int]string) error {
+func updateCities(db *sql.DB, cities map[int]string) error {
+	citiesTmpTableQuery := "CREATE TEMPORARY TABLE temp_city (" +
+		"city_id SMALLINT PRIMARY KEY, " +
+		"name VARCHAR(100)" +
+		");"
+	if _, err := db.Exec(citiesTmpTableQuery); err != nil {
+		return err
+	}
+
 	var valueStrings []string
 	var valueArgs []interface{}
 	i := 0
@@ -432,8 +769,33 @@ func insertCities(db *sql.DB, cities map[int]string) error {
 		i++
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO city VALUES %s;", strings.Join(valueStrings, ","))
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_city VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateCitiesQuery := "INSERT INTO city " +
+		"SELECT * FROM temp_city " +
+		"ON CONFLICT (city_id) DO UPDATE " +
+		"SET name = EXCLUDED.name;"
+	if _, err := tx.Exec(updateCitiesQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteCitiesQuery := "DELETE FROM city WHERE city_id NOT IN (SELECT city_id FROM temp_city);"
+	if _, err := tx.Exec(deleteCitiesQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
 		return err
 	}
 

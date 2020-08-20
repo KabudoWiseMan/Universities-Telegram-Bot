@@ -580,8 +580,9 @@ func handleChangeOrClearRequest(db *sql.DB, data string, user *UserInfo) (string
 			text += " профиль"
 		}
 	case EgeState:
+		var err error
 		backPattern = "ege#" + page
-		subjs, err := getSubjsMapFromDb(db)
+		subjs, err = getSubjsMapFromDb(db)
 		if err != nil {
 			return makeDbErrorResponseData(err, backPattern)
 		}

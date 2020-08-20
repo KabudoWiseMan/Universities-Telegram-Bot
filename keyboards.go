@@ -363,6 +363,7 @@ func makeChangeOrClearMenu(state int, user *UserInfo, subjs map[int]string, back
 			fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(subjs[ege.SubjId], "chOrCl&" + strconv.Itoa(SubjState) + "&" + strconv.Itoa(ege.SubjId) + "#" + curPage)))
 		}
 		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить всё", "clear&" + strconv.Itoa(EgeState))))
+		log.Println("BUTTONS:", fullButtons)
 	case SubjState:
 		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Изменить баллы", "chPoints#" + curPage)))
 		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить", "clear&" + strconv.Itoa(state))))
@@ -375,7 +376,6 @@ func makeChangeOrClearMenu(state int, user *UserInfo, subjs map[int]string, back
 		fullButtons...
 	)
 
-	log.Println("ALRIGHT:", changeFullMenu.InlineKeyboard)
 	return changeFullMenu
 }
 

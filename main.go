@@ -3,11 +3,13 @@ package main
 import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -38,6 +40,38 @@ func monitorUsers(ticker *time.Ticker, users *Users) {
 	}
 }
 
+func updateDb(wg *sync.WaitGroup, ticker *time.Ticker) {
+	for {
+		select {
+		case <-ticker.C:
+			wg.Add(1)
+			db, err := connectToDb()
+			if err != nil {
+				log.Println("couldn't connected to data base for update", err)
+				wg.Done()
+				continue
+			}
+			log.Println("Successfully connected to data base for update")
+			defer closeDb(db)
+
+
+		}
+	}
+}
+
+func manuallyUpdateDb(wg *sync.WaitGroup) {
+	defer wg.Done()
+	db, err := connectToDb()
+	if err != nil {
+		log.Println("couldn't connected to data base for update", err)
+		return
+	}
+	log.Println("Successfully connected to data base for update")
+	defer closeDb(db)
+
+
+}
+
 func main() {
 	bot, err := tgbotapi.NewBotAPI(BotToken)
 	if err != nil {
@@ -51,7 +85,7 @@ func main() {
 	if err != nil {
 		log.Panic("couldn't connected to data base", err)
 	}
-	log.Println("Successfully connected to data base!")
+	log.Println("Successfully connected to data base")
 	defer closeDb(db)
 
 	u := tgbotapi.NewUpdate(0)
@@ -71,8 +105,10 @@ func main() {
 
 	users := InitUsers()
 
-	ticker := time.NewTicker(30 * time.Minute)
-	go monitorUsers(ticker, users)
+	usersTicker := time.NewTicker(30 * time.Minute)
+	go monitorUsers(usersTicker, users)
+
+	var wg sync.WaitGroup
 
 	for {
 		select {
@@ -118,7 +154,7 @@ func main() {
 					user.State = FeeState
 					text = "Введите максимальную цену за год обучения"
 					var backPattern string
-					if user.Fee == 0 {
+					if user.Fee == math.MaxUint64 {
 						backPattern = "uni"
 					} else {
 						backPattern = "chOrCl&" + strconv.Itoa(FeeState)
@@ -218,6 +254,14 @@ func main() {
 						msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
 							"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
 						msg.ReplyMarkup = mainMenu
+					case "update":
+						if isAdmin(chatID) {
+							msg.Text = "Обновление началось"
+							wg.Add(1)
+							go manuallyUpdateDb(&wg)
+						} else {
+							msg.Text = "У меня нет такой команды"
+						}
 					default:
 						msg.Text = "У меня нет такой команды"
 					}
@@ -277,6 +321,7 @@ func main() {
 			}
 		case <-stop:
 			log.Println("Got interrupt signal. Aborting...")
+			wg.Wait()
 			return
 		}
 	}
