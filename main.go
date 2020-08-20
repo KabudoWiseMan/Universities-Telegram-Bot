@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -76,8 +75,6 @@ func main() {
 
 	usersTicker := time.NewTicker(30 * time.Minute)
 	go monitorUsers(usersTicker, users)
-
-	var wg sync.WaitGroup
 
 	for {
 		select {
@@ -282,7 +279,6 @@ func main() {
 			}
 		case <-stop:
 			log.Println("Got interrupt signal. Aborting...")
-			wg.Wait()
 			return
 		}
 	}

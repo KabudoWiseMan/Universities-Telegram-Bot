@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"log"
-	"sync"
 )
 
 func uniIsWrong(uni *University) bool {
@@ -79,10 +78,7 @@ func parseAndUpdateUnis(db *sql.DB) error {
 	return nil
 }
 
-func updateUnis(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	db, err := connectToDb()
+func updateUnis() {db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update universities", err)
 		return
@@ -118,10 +114,7 @@ func parseAndUpdateFacs(db *sql.DB) error {
 	return nil
 }
 
-func updateFacs(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	db, err := connectToDb()
+func updateFacs() {db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update faculties", err)
 		return
@@ -172,10 +165,7 @@ func parseAndUpdateProgsNInfo(db *sql.DB) error {
 	return nil
 }
 
-func updateProgsNInfo(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	db, err := connectToDb()
+func updateProgsNInfo() {db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update programs", err)
 		return
@@ -204,10 +194,7 @@ func parseAndUpdateCities(db *sql.DB) error {
 	return nil
 }
 
-func updateCities(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	db, err := connectToDb()
+func updateCities() {db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update cities", err)
 		return
@@ -240,10 +227,7 @@ func parseAndUpdateSubjs(db *sql.DB) error {
 	return nil
 }
 
-func updateSubjs(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	db, err := connectToDb()
+func updateSubjs() {db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update subjects", err)
 		return
@@ -272,10 +256,7 @@ func parseAndUpdateRatingQS(db *sql.DB) error {
 	return nil
 }
 
-func updateRatingQS(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	db, err := connectToDb()
+func updateRatingQS() {db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update rating QS", err)
 		return
@@ -329,10 +310,7 @@ func parseAndUpdateProfsNSpecs(db *sql.DB) error {
 	return nil
 }
 
-func updateProfsNSpecs(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	db, err := connectToDb()
+func updateProfsNSpecs() {db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update profiles and specialities", err)
 		return
@@ -343,10 +321,7 @@ func updateProfsNSpecs(wg *sync.WaitGroup) {
 	parseAndUpdateProfsNSpecs(db)
 }
 
-func updateDb(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	db, err := connectToDb()
+func updateDb() {db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update", err)
 		return
