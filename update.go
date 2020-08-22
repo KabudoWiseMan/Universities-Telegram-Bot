@@ -127,19 +127,13 @@ func updateFacs() {
 	parseAndUpdateFacs(db)
 }
 
-func parseAndUpdateProgsNInfo(db *sql.DB, from int, to int) error {
+func parseAndUpdateProgsNInfo(db *sql.DB) error {
 	var facs []*Faculty
 	facs, err := getFacsIdsFromDb(db)
 	if err != nil {
 		log.Println("couldn't get faculties from db for update programs, error:", err)
 		return err
 	}
-
-	if to == 0 || to > len(facs) {
-		to = len(facs)
-	}
-
-	facs = facs[from : to]
 
 	var specs []*Speciality
 	specs, err = getSpecsIdsFromDb(db)
@@ -155,25 +149,54 @@ func parseAndUpdateProgsNInfo(db *sql.DB, from int, to int) error {
 		return err
 	}
 
-	log.Println("Parsing programs started")
-	progs, minPoints, entrTests := parsePrograms(facs, specs, subjs)
-	if len(progs) == 0 || len(minPoints) == 0 || len(entrTests) == 0 ||
-		progIsWrong(progs[0]) || minPointsIsWrong(minPoints[0]) || entrTestIsWrong(entrTests[0]) {
-		log.Println("Parsing programs failed")
-		return errors.New("error")
+	if err = createTempTablesForProgsNInfo(db); err != nil {
+		log.Println("couldn't create temp tables for programs, error:", err)
+		return err
 	}
-	log.Println("Parsing programs finished")
+
+	pace := 100
+
+	log.Println("Parsing and inserting programs started")
+	for i := 0; i < len(facs); i += pace {
+		to := i + pace
+		if to > len(facs) {
+			to = len(facs)
+		}
+
+		facsSlice := facs[i : to]
+
+		log.Println("Parsing and inserting programs of faculties from", i, "to", to, "started")
+		for j := 0; j <= 3; j++ {
+			progs, minPoints, entrTests := parsePrograms(facsSlice, specs, subjs)
+			if len(progs) == 0 || len(minPoints) == 0 || len(entrTests) == 0 ||
+				progIsWrong(progs[0]) || minPointsIsWrong(minPoints[0]) || entrTestIsWrong(entrTests[0]) {
+				err = errors.New("parsing error")
+			} else {
+				err = insertProgsNInfoToTempTables(db, progs, minPoints, entrTests)
+				if err == nil {
+					break
+				}
+			}
+		}
+		if err != nil {
+			log.Println("Parsing and inserting programs of faculties from", i, "to", to, "failed with error:", err)
+			return err
+		}
+		log.Println("Parsing and inserting programs of faculties from", i, "to", to, "finished")
+	}
+	log.Println("Parsing and inserting programs finished")
 
 	log.Println("Updating programs started")
-	if err := updateProgsNInfoInDb(db, progs, minPoints, entrTests); err != nil {
+	if err := updateProgsNInfoInDb(db); err != nil {
 		log.Println("Updating programs failed with error:", err)
 		return err
 	}
 	log.Println("Updating programs finished")
+
 	return nil
 }
 
-func updateProgsNInfo(from int, to int) {
+func updateProgsNInfo() {
 	db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update programs", err)
@@ -182,7 +205,7 @@ func updateProgsNInfo(from int, to int) {
 	log.Println("Successfully connected to data base for update programs")
 	defer closeDb(db)
 
-	parseAndUpdateProgsNInfo(db, from, to)
+	parseAndUpdateProgsNInfo(db)
 }
 
 func parseAndUpdateCities(db *sql.DB) error {
@@ -365,7 +388,7 @@ func updateDb() {
 		return
 	}
 
-	if err = parseAndUpdateProgsNInfo(db, 0, 0); err != nil {
+	if err = parseAndUpdateProgsNInfo(db); err != nil {
 		return
 	}
 
