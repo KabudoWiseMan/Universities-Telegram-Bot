@@ -100,7 +100,7 @@ func makeRatingQsMenu(unisQSNum int, unisQS []*UniversityQS, curPage string) tgb
 	fullButtons = append(fullButtons, unisQSButtons...)
 	fullButtons = append(fullButtons, paginator)
 	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(qsButton), tgbotapi.NewInlineKeyboardRow(mainButton))
-	
+
 	ratingQSFullMenu := tgbotapi.NewInlineKeyboardMarkup(
 		fullButtons...
 	)
@@ -244,7 +244,7 @@ func makeSpecsMenu(specsNum int, specs []*Speciality, pagesPattern string, backP
 	return specsFullMenu
 }
 
-func makeProgsMenu(progsNum int, progs []*Program, pagesPattern string, backPattern string, progPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
+func makeProgsMenu(progsNum int, progs []*ProgramPreview, pagesPattern string, backPattern string, progPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
 	var progsButtons [][]tgbotapi.InlineKeyboardButton
 	for _, prog := range progs {
 		progsButtons = append(progsButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(prog.Name, "getProg&" + prog.ProgramId.String() + progPattern)))

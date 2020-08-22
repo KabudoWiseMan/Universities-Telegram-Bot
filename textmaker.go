@@ -155,10 +155,10 @@ func makeTextSpecs(specs []*Speciality) string {
 	}
 }
 
-func makeTextProgs(progs []*Program) string {
+func makeTextProgs(progs []*ProgramPreview) string {
 	var res string
 	for _, prog := range progs {
-		res += prog.Name + " *" + makeProfOrSpecCode(prog.SpecialityId) + "*\n\n"
+		res += "*" + prog.Name + "* | Специальность: " + prog.SpecialityName + "(" + makeProfOrSpecCode(prog.SpecialityId) + ")\n\n"
 	}
 
 	if len(res) == 0 {

@@ -320,7 +320,7 @@ func handleProgsRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyboar
 	ids := takeIds(data)
 
 	var text, curPage string
-	var progs []*Program
+	var progs []*ProgramPreview
 	var progsNum int
 	var pagesPattern, backPattern string
 

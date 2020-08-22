@@ -584,11 +584,11 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 		return err
 	}
 
-	deleteProgsQuery := "DELETE FROM program WHERE program_id NOT IN (SELECT program_id FROM temp_program);"
-	if _, err := tx.Exec(deleteProgsQuery); err != nil {
-		tx.Rollback()
-		return err
-	}
+	//deleteProgsQuery := "DELETE FROM program WHERE program_id NOT IN (SELECT program_id FROM temp_program);"
+	//if _, err := tx.Exec(deleteProgsQuery); err != nil {
+	//	tx.Rollback()
+	//	return err
+	//}
 
 	updateMinPointsQuery := "INSERT INTO min_ege_points " +
 		"SELECT * FROM temp_min_ege_points " +
@@ -599,11 +599,11 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 		return err
 	}
 
-	deleteMinPointsQuery := "DELETE FROM min_ege_points WHERE (program_id, subject_id) NOT IN (SELECT program_id, subject_id FROM temp_min_ege_points);"
-	if _, err := tx.Exec(deleteMinPointsQuery); err != nil {
-		tx.Rollback()
-		return err
-	}
+	//deleteMinPointsQuery := "DELETE FROM min_ege_points WHERE (program_id, subject_id) NOT IN (SELECT program_id, subject_id FROM temp_min_ege_points);"
+	//if _, err := tx.Exec(deleteMinPointsQuery); err != nil {
+	//	tx.Rollback()
+	//	return err
+	//}
 
 	updateEntrTestsQuery := "INSERT INTO entrance_test " +
 		"SELECT * FROM temp_entrance_test " +
@@ -614,11 +614,11 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 		return err
 	}
 
-	deleteEntrTestsQuery := "DELETE FROM entrance_test WHERE (program_id, test_name) NOT IN (SELECT program_id, test_name FROM temp_entrance_test);"
-	if _, err := tx.Exec(deleteEntrTestsQuery); err != nil {
-		tx.Rollback()
-		return err
-	}
+	//deleteEntrTestsQuery := "DELETE FROM entrance_test WHERE (program_id, test_name) NOT IN (SELECT program_id, test_name FROM temp_entrance_test);"
+	//if _, err := tx.Exec(deleteEntrTestsQuery); err != nil {
+	//	tx.Rollback()
+	//	return err
+	//}
 
 	err = tx.Commit()
 	if err != nil {
@@ -1159,27 +1159,28 @@ func getSpecFromDb(db *sql.DB, specId string) (*Speciality, error) {
 	return spec, nil
 }
 
-func getProgsInfoFromDb(db *sql.DB, query string) ([]*Program, error) {
+func getProgsInfoFromDb(db *sql.DB, query string) ([]*ProgramPreview, error) {
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var progs []*Program
+	var progs []*ProgramPreview
 	for rows.Next() {
 		var program_id uuid.UUID
 		var speciality_id int
-		var name string
-		err := rows.Scan(&program_id, &name, &speciality_id)
+		var name, spec_name string
+		err := rows.Scan(&program_id, &name, &speciality_id, &spec_name)
 		if err != nil {
 			return nil, err
 		}
 
-		prog := &Program{
+		prog := &ProgramPreview{
 			ProgramId: program_id,
 			Name: name,
 			SpecialityId: speciality_id,
+			SpecialityName: spec_name,
 		}
 
 		progs = append(progs, prog)
@@ -1200,8 +1201,9 @@ func getUniProgsNumFromDb(db *sql.DB, uniId string) (int, error) {
 	return getCountFromDb(db, from)
 }
 
-func getUniProgsPageFromDb(db *sql.DB, uniId string, offset string) ([]*Program, error) {
-	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
+func getUniProgsPageFromDb(db *sql.DB, uniId string, offset string) ([]*ProgramPreview, error) {
+	query := "SELECT pr.program_id, pr.name, pr.speciality_id, s.name FROM program pr " +
+		"JOIN speciality s ON (s.speciality_id = pr.speciality_id) " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"JOIN university u ON (f.university_id = u.university_id) " +
 		"WHERE u.university_id = " + uniId +
@@ -1216,8 +1218,9 @@ func getFacProgsNumFromDb(db *sql.DB, facId string) (int, error) {
 	return getCountFromDb(db, from)
 }
 
-func getFacProgsPageFromDb(db *sql.DB, facId string, offset string) ([]*Program, error) {
-	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
+func getFacProgsPageFromDb(db *sql.DB, facId string, offset string) ([]*ProgramPreview, error) {
+	query := "SELECT pr.program_id, pr.name, pr.speciality_id, s.name FROM program pr " +
+		"JOIN speciality s ON (s.speciality_id = pr.speciality_id) " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId +
 		" LIMIT 5 OFFSET " + offset + ";"
@@ -1232,8 +1235,9 @@ func getUniSpecProgsNumFromDb(db *sql.DB, uniId string, specId string) (int, err
 	return getCountFromDb(db, from)
 }
 
-func getUniSpecProgsPageFromDb(db *sql.DB, uniId string, specId string, offset string) ([]*Program, error) {
-	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
+func getUniSpecProgsPageFromDb(db *sql.DB, uniId string, specId string, offset string) ([]*ProgramPreview, error) {
+	query := "SELECT pr.program_id, pr.name, pr.speciality_id, s.name FROM program pr " +
+		"JOIN speciality s ON (s.speciality_id = pr.speciality_id) " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"JOIN university u ON (f.university_id = u.university_id) " +
 		"WHERE u.university_id = " + uniId + " AND pr.speciality_id = " + specId +
@@ -1248,8 +1252,9 @@ func getFacSpecProgsNumFromDb(db *sql.DB, facId string, specId string) (int, err
 	return getCountFromDb(db, from)
 }
 
-func getFacSpecProgsPageFromDb(db *sql.DB, facId string, specId string, offset string) ([]*Program, error) {
-	query := "SELECT pr.program_id, pr.name, pr.speciality_id FROM program pr " +
+func getFacSpecProgsPageFromDb(db *sql.DB, facId string, specId string, offset string) ([]*ProgramPreview, error) {
+	query := "SELECT pr.program_id, pr.name, pr.speciality_id, s.name FROM program pr " +
+		"JOIN speciality s ON (s.speciality_id = pr.speciality_id) " +
 		"JOIN faculty f ON (pr.faculty_id = f.faculty_id) " +
 		"WHERE f.faculty_id = " + facId + " AND pr.speciality_id = " + specId +
 		" LIMIT 5 OFFSET " + offset + ";"

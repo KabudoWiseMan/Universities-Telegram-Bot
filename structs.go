@@ -110,3 +110,10 @@ type Subject struct {
 	SubjectId int
 	Name string
 }
+
+type ProgramPreview struct {
+	ProgramId uuid.UUID
+	Name string
+	SpecialityId int
+	SpecialityName string
+}
