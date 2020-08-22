@@ -584,11 +584,11 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 		return err
 	}
 
-	//deleteProgsQuery := "DELETE FROM program WHERE program_id NOT IN (SELECT program_id FROM temp_program);"
-	//if _, err := tx.Exec(deleteProgsQuery); err != nil {
-	//	tx.Rollback()
-	//	return err
-	//}
+	deleteProgsQuery := "DELETE FROM program WHERE program_id NOT IN (SELECT program_id FROM temp_program);"
+	if _, err := tx.Exec(deleteProgsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
 
 	updateMinPointsQuery := "INSERT INTO min_ege_points " +
 		"SELECT * FROM temp_min_ege_points " +
@@ -599,11 +599,11 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 		return err
 	}
 
-	//deleteMinPointsQuery := "DELETE FROM min_ege_points WHERE (program_id, subject_id) NOT IN (SELECT program_id, subject_id FROM temp_min_ege_points);"
-	//if _, err := tx.Exec(deleteMinPointsQuery); err != nil {
-	//	tx.Rollback()
-	//	return err
-	//}
+	deleteMinPointsQuery := "DELETE FROM min_ege_points WHERE (program_id, subject_id) NOT IN (SELECT program_id, subject_id FROM temp_min_ege_points);"
+	if _, err := tx.Exec(deleteMinPointsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
 
 	updateEntrTestsQuery := "INSERT INTO entrance_test " +
 		"SELECT * FROM temp_entrance_test " +
@@ -614,11 +614,11 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 		return err
 	}
 
-	//deleteEntrTestsQuery := "DELETE FROM entrance_test WHERE (program_id, test_name) NOT IN (SELECT program_id, test_name FROM temp_entrance_test);"
-	//if _, err := tx.Exec(deleteEntrTestsQuery); err != nil {
-	//	tx.Rollback()
-	//	return err
-	//}
+	deleteEntrTestsQuery := "DELETE FROM entrance_test WHERE (program_id, test_name) NOT IN (SELECT program_id, test_name FROM temp_entrance_test);"
+	if _, err := tx.Exec(deleteEntrTestsQuery); err != nil {
+		tx.Rollback()
+		return err
+	}
 
 	err = tx.Commit()
 	if err != nil {
