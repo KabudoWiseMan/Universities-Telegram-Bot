@@ -103,7 +103,7 @@ func updateUnisInDb(db *sql.DB, unis []*University) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -179,7 +179,7 @@ func updateProfsNSpecsInDb(db *sql.DB, profs []*Profile, specs []*Speciality) er
 		"SELECT * FROM temp_speciality " +
 		"ON CONFLICT (speciality_id) DO UPDATE " +
 		"SET name = EXCLUDED.name, " +
-		"bachelor = EXCLUDED.bachelor " +
+		"bachelor = EXCLUDED.bachelor, " +
 		"profile_id = EXCLUDED.profile_id;"
 	if _, err := tx.Exec(updateSpecsQuery); err != nil {
 		tx.Rollback()
@@ -196,7 +196,7 @@ func updateProfsNSpecsInDb(db *sql.DB, profs []*Profile, specs []*Speciality) er
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -302,7 +302,7 @@ func updateFacsInDb(db *sql.DB, facs []*Faculty) error {
 		"site = EXCLUDED.site, " +
 		"email = EXCLUDED.email, " +
 		"adress = EXCLUDED.adress, " +
-		"university_id = EXECUTED.university_id;"
+		"university_id = EXCLUDED.university_id;"
 	if _, err := tx.Exec(updateFacsQuery); err != nil {
 		tx.Rollback()
 		return err
@@ -318,7 +318,7 @@ func updateFacsInDb(db *sql.DB, facs []*Faculty) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -530,7 +530,7 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 
 	entrTestsTmpTableQuery := "CREATE TEMPORARY TABLE temp_entrance_test (" +
 		"program_id uuid NOT NULL, " +
-		"test_name VARCHAR(100) NOT NULL, " +
+		"test_name VARCHAR(200) NOT NULL, " +
 		"min_points SMALLINT NOT NULL, " +
 		"PRIMARY KEY (program_id, test_name), " +
 		"FOREIGN KEY (program_id) REFERENCES temp_program(program_id) ON UPDATE CASCADE" +
@@ -549,10 +549,10 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 		return err
 	}
 
-	matchProgramIdsQuery := "UPDATE temp_program tp " +
-		"SET tp.program_id = p.program_id " +
+	matchProgramIdsQuery := "UPDATE temp_program " +
+		"SET program_id = p.program_id " +
 		"FROM program p " +
-		"WHERE tp.program_num = p.program_num AND tp.faculty_id = p.faculty_id;"
+		"WHERE temp_program.program_num = p.program_num AND temp_program.faculty_id = p.faculty_id;"
 	if _, err := db.Exec(matchProgramIdsQuery); err != nil {
 		return err
 	}
@@ -584,11 +584,11 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 		return err
 	}
 
-	deleteProgsQuery := "DELETE FROM program WHERE program_id NOT IN (SELECT program_id FROM temp_program);"
-	if _, err := tx.Exec(deleteProgsQuery); err != nil {
-		tx.Rollback()
-		return err
-	}
+	//deleteProgsQuery := "DELETE FROM program WHERE program_id NOT IN (SELECT program_id FROM temp_program);"
+	//if _, err := tx.Exec(deleteProgsQuery); err != nil {
+	//	tx.Rollback()
+	//	return err
+	//}
 
 	updateMinPointsQuery := "INSERT INTO min_ege_points " +
 		"SELECT * FROM temp_min_ege_points " +
@@ -599,11 +599,11 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 		return err
 	}
 
-	deleteMinPointsQuery := "DELETE FROM min_ege_points WHERE (program_id, subject_id) NOT IN (SELECT program_id, subject_id FROM temp_min_ege_points);"
-	if _, err := tx.Exec(deleteMinPointsQuery); err != nil {
-		tx.Rollback()
-		return err
-	}
+	//deleteMinPointsQuery := "DELETE FROM min_ege_points WHERE (program_id, subject_id) NOT IN (SELECT program_id, subject_id FROM temp_min_ege_points);"
+	//if _, err := tx.Exec(deleteMinPointsQuery); err != nil {
+	//	tx.Rollback()
+	//	return err
+	//}
 
 	updateEntrTestsQuery := "INSERT INTO entrance_test " +
 		"SELECT * FROM temp_entrance_test " +
@@ -614,11 +614,11 @@ func updateProgsNInfoInDb(db *sql.DB, progs []*Program, minEgePoints []*MinEgePo
 		return err
 	}
 
-	deleteEntrTestsQuery := "DELETE FROM entrance_test WHERE (program_id, test_name) NOT IN (SELECT program_id, test_name FROM temp_entrance_test);"
-	if _, err := tx.Exec(deleteEntrTestsQuery); err != nil {
-		tx.Rollback()
-		return err
-	}
+	//deleteEntrTestsQuery := "DELETE FROM entrance_test WHERE (program_id, test_name) NOT IN (SELECT program_id, test_name FROM temp_entrance_test);"
+	//if _, err := tx.Exec(deleteEntrTestsQuery); err != nil {
+	//	tx.Rollback()
+	//	return err
+	//}
 
 	err = tx.Commit()
 	if err != nil {

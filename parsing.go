@@ -666,7 +666,7 @@ func searchSubjs(node *html.Node) map[string]int {
 
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
 			if isElem(c, "label") {
-				name := getAttr(c, "name")
+				name := getAttr(c, "title")
 				if name == "Вступительные" {
 					continue
 				}
@@ -848,7 +848,7 @@ func searchPrograms(node *html.Node, facId int, specsIds map[int]bool, subjs map
 				for cs := c.FirstChild; cs != nil; cs = cs.NextSibling {
 					if isDiv(cs, "itemSpecAll") {
 						for css := cs.FirstChild; css != nil; css = css.NextSibling {
-							if isDiv(css, "col-md-7 itemSpecAllname") {
+							if isDiv(css, "col-md-7 itemSpecAllTitle") {
 								for csss := css.FirstChild; csss != nil; csss = csss.NextSibling {
 									if isDiv(csss, "itemSpecAllinfo") {
 										for cssss := csss.FirstChild; cssss != nil; cssss = cssss.NextSibling {
@@ -939,6 +939,7 @@ func searchProgram(node *html.Node, progSite string, facId int, progName string,
 		if err != nil {
 			log.Println("Something went wrong with UUID:", err)
 		}
+
 		specialityId, freePassPoints, freePlaces, paidPlaces, fee := searchProgInfo(progInfo)
 		paidPassPoints, studyForm, studyLanguage, studyBase, studyYears, description, minPoints, entrTests := searchProgInfo2(progInfo2, programId, subjs)
 		prog := &Program{
@@ -1082,6 +1083,8 @@ func searchProgInfo2(node *html.Node, programId uuid.UUID, subjs map[string]int)
 	if isDiv(node, "sideContent progpagege") {
 		paidPassPoints := -1
 		var studyForm, studyLanguage, studyBase, studyYears, description string
+		subjsIdsMap := make(map[int]bool)
+		testNames := make(map[string]bool)
 		var minPoints []*MinEgePoints
 		var entrTests []*EntranceTest
 
@@ -1115,7 +1118,6 @@ func searchProgInfo2(node *html.Node, programId uuid.UUID, subjs map[string]int)
 						for css := cs.FirstChild; css != nil; css = css.NextSibling {
 							if isDiv(css, "col-md-3 col-sm-6 varEgeProg") {
 								isEntrance := false
-								testNames := make(map[string]bool)
 								for csss := css.FirstChild; csss != nil; csss = csss.NextSibling {
 									if isDiv(csss, "cpPara") {
 										minPointsInfo := csss.FirstChild
@@ -1139,13 +1141,19 @@ func searchProgInfo2(node *html.Node, programId uuid.UUID, subjs map[string]int)
 												entrTests = append(entrTests, entrTest)
 											} else {
 												subj := strings.TrimSpace(strings.Split(splitted[0], " (")[0])
-												if subj == "Английский" {
+												if subj == "Английский" || subj == "Испанский" {
 													subj = "Иностранный язык"
 												}
 												subjectId, ok := subjs[subj]
 												if !ok {
 													log.Println("couldn't find subject key, got: " + subj)
 												}
+												if _, ok := subjsIdsMap[subjectId]; ok {
+													continue
+												} else {
+													subjsIdsMap[subjectId] = true
+												}
+
 												progMinPoints := &MinEgePoints{
 													ProgramId: programId,
 													SubjectId: subjectId,

@@ -11,7 +11,11 @@ func makeTextUnisQS(unisQS []*UniversityQS) string {
 		res += "*" + uniQS.Mark + "* " + uniQS.Name + "\n\n"
 	}
 
-	return res[:len(res) - 2]
+	if len(res) == 0 {
+		return ""
+	} else {
+		return res[:len(res) - 2]
+	}
 }
 
 func makeTextUnis(unis []*University) string {
@@ -20,7 +24,11 @@ func makeTextUnis(unis []*University) string {
 		res += uni.Name + "\n\n"
 	}
 
-	return res[:len(res) - 2]
+	if len(res) == 0 {
+		return ""
+	} else {
+		return res[:len(res) - 2]
+	}
 }
 
 func makeTextUni(uni *University, ratingQS string) string {
@@ -73,7 +81,11 @@ func makeTextFacs(facs []*Faculty) string {
 		res += fac.Name + "\n\n"
 	}
 
-	return res[:len(res) - 2]
+	if len(res) == 0 {
+		return ""
+	} else {
+		return res[:len(res) - 2]
+	}
 }
 
 func makeTextFac(fac *Faculty) string {
@@ -117,7 +129,11 @@ func makeTextProfs(profs []*Profile) string {
 		res += "*" + makeProfOrSpecCode(prof.ProfileId) + "* " + prof.Name + "\n\n"
 	}
 
-	return res[:len(res) - 2]
+	if len(res) == 0 {
+		return ""
+	} else {
+		return res[:len(res) - 2]
+	}
 }
 
 func makeTextSpecs(specs []*Speciality) string {
@@ -132,7 +148,11 @@ func makeTextSpecs(specs []*Speciality) string {
 		res += "*" + makeProfOrSpecCode(spec.SpecialityId) + "* " + spec.Name + " *" + bachelorStr + "*\n\n"
 	}
 
-	return res[:len(res) - 2]
+	if len(res) == 0 {
+		return ""
+	} else {
+		return res[:len(res) - 2]
+	}
 }
 
 func makeTextProgs(progs []*Program) string {
@@ -141,7 +161,11 @@ func makeTextProgs(progs []*Program) string {
 		res += prog.Name + " *" + makeProfOrSpecCode(prog.SpecialityId) + "*\n\n"
 	}
 
-	return res[:len(res) - 2]
+	if len(res) == 0 {
+		return ""
+	} else {
+		return res[:len(res) - 2]
+	}
 }
 
 func makeTextProg(prog *ProgramInfo) string {

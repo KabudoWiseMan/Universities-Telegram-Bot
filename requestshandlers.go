@@ -99,7 +99,7 @@ func handleRatingQSRequest(db *sql.DB, data string) (string, tgbotapi.InlineKeyb
 		"Для более подробной информации посетите сайт QS, нажав на кнопку *Перейти на сайт QS*\n\n"
 
 	unisQS, err := getUnisQSPageFromDb(db, makeOffset(page))
-	if err != nil {
+	if err != nil || len(unisQS) == 0 {
 		return makeDbErrorResponseData(err, "")
 	}
 	text += makeTextUnisQS(unisQS)
@@ -602,7 +602,7 @@ func handleChangeOrClearRequest(db *sql.DB, data string, user *UserInfo) (string
 		}
 		text += " ЕГЭ по предмету *" + subjName + "*"
 	}
-	
+
 	changeMenu := makeChangeOrClearMenu(state, user, subjs, backPattern, page)
 
 	return text, changeMenu

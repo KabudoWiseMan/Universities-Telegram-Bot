@@ -78,7 +78,8 @@ func parseAndUpdateUnis(db *sql.DB) error {
 	return nil
 }
 
-func updateUnis() {db, err := connectToDb()
+func updateUnis() {
+	db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update universities", err)
 		return
@@ -114,7 +115,8 @@ func parseAndUpdateFacs(db *sql.DB) error {
 	return nil
 }
 
-func updateFacs() {db, err := connectToDb()
+func updateFacs() {
+	db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update faculties", err)
 		return
@@ -125,13 +127,19 @@ func updateFacs() {db, err := connectToDb()
 	parseAndUpdateFacs(db)
 }
 
-func parseAndUpdateProgsNInfo(db *sql.DB) error {
+func parseAndUpdateProgsNInfo(db *sql.DB, from int, to int) error {
 	var facs []*Faculty
 	facs, err := getFacsIdsFromDb(db)
 	if err != nil {
 		log.Println("couldn't get faculties from db for update programs, error:", err)
 		return err
 	}
+
+	if to == 0 || to > len(facs) {
+		to = len(facs)
+	}
+
+	facs = facs[from : to]
 
 	var specs []*Speciality
 	specs, err = getSpecsIdsFromDb(db)
@@ -165,7 +173,8 @@ func parseAndUpdateProgsNInfo(db *sql.DB) error {
 	return nil
 }
 
-func updateProgsNInfo() {db, err := connectToDb()
+func updateProgsNInfo(from int, to int) {
+	db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update programs", err)
 		return
@@ -173,7 +182,7 @@ func updateProgsNInfo() {db, err := connectToDb()
 	log.Println("Successfully connected to data base for update programs")
 	defer closeDb(db)
 
-	parseAndUpdateProgsNInfo(db)
+	parseAndUpdateProgsNInfo(db, from, to)
 }
 
 func parseAndUpdateCities(db *sql.DB) error {
@@ -194,7 +203,8 @@ func parseAndUpdateCities(db *sql.DB) error {
 	return nil
 }
 
-func updateCities() {db, err := connectToDb()
+func updateCities() {
+	db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update cities", err)
 		return
@@ -227,7 +237,8 @@ func parseAndUpdateSubjs(db *sql.DB) error {
 	return nil
 }
 
-func updateSubjs() {db, err := connectToDb()
+func updateSubjs() {
+	db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update subjects", err)
 		return
@@ -256,7 +267,8 @@ func parseAndUpdateRatingQS(db *sql.DB) error {
 	return nil
 }
 
-func updateRatingQS() {db, err := connectToDb()
+func updateRatingQS() {
+	db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update rating QS", err)
 		return
@@ -310,7 +322,8 @@ func parseAndUpdateProfsNSpecs(db *sql.DB) error {
 	return nil
 }
 
-func updateProfsNSpecs() {db, err := connectToDb()
+func updateProfsNSpecs() {
+	db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update profiles and specialities", err)
 		return
@@ -321,7 +334,8 @@ func updateProfsNSpecs() {db, err := connectToDb()
 	parseAndUpdateProfsNSpecs(db)
 }
 
-func updateDb() {db, err := connectToDb()
+func updateDb() {
+	db, err := connectToDb()
 	if err != nil {
 		log.Println("couldn't connected to data base for update", err)
 		return
@@ -351,7 +365,7 @@ func updateDb() {db, err := connectToDb()
 		return
 	}
 
-	if err = parseAndUpdateProgsNInfo(db); err != nil {
+	if err = parseAndUpdateProgsNInfo(db, 0, 0); err != nil {
 		return
 	}
 
