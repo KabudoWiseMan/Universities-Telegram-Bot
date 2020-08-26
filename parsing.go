@@ -354,14 +354,14 @@ func searchUniversity(node *html.Node, uniSite string) *University {
 		}
 
 		name, dormitary, militaryDep, description := searchUniOrFacInfo(cs[mainBlockIdx])
-		phone, adress, email, site, _ := searchUniOrFacInfo2(cs[wrapIdx])
+		phone, address, email, site, _ := searchUniOrFacInfo2(cs[wrapIdx])
 		uni := &University{
 			UniversityId: universityId,
 			Name: name,
 			Description: description,
 			Site: site,
 			Email: email,
-			Adress: adress,
+			Address: address,
 			Phone: phone,
 			MilitaryDep: militaryDep,
 			Dormitary: dormitary,
@@ -440,7 +440,7 @@ func takeDescription(nodes []*html.Node) string {
 
 func searchUniOrFacInfo2(node *html.Node) (string, string, string, string, bool) {
 	if isDiv(node, "col-lg-6 col-md-6 col-xs-12 col-sm-6") {
-		var phone, adress, email, site string
+		var phone, address, email, site string
 		i := 0
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
 			if isElem(c, "div") {
@@ -452,7 +452,7 @@ func searchUniOrFacInfo2(node *html.Node) (string, string, string, string, bool)
 							case 0:
 								phone = data
 							case 1:
-								adress = data
+								address = data
 							case 2:
 								email = data
 							case 3:
@@ -471,7 +471,7 @@ func searchUniOrFacInfo2(node *html.Node) (string, string, string, string, bool)
 			}
 		}
 
-		return phone, adress, email, site, true
+		return phone, address, email, site, true
 	}
 
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
@@ -613,14 +613,14 @@ func searchFaculty(node *html.Node, facSite string, uniId int) *Faculty {
 		}
 
 		name, _, _, description := searchUniOrFacInfo(cs[mainBlockIdx])
-		phone, adress, email, site, _ := searchUniOrFacInfo2(cs[wrapIdx])
+		phone, address, email, site, _ := searchUniOrFacInfo2(cs[wrapIdx])
 		fac := &Faculty{
 			FacultyId: facultyId,
 			Name: name,
 			Description: description,
 			Site: site,
 			Email: email,
-			Adress: adress,
+			Address: address,
 			Phone: phone,
 			UniversityId: uniId,
 		}

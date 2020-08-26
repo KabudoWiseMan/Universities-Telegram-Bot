@@ -43,7 +43,7 @@ func updateUnisInDb(db *sql.DB, unis []*University) error {
 		"description TEXT NOT NULL, " +
 		"site VARCHAR(200) NOT NULL, " +
 		"email VARCHAR(254) NOT NULL, " +
-		"adress VARCHAR(400) NOT NULL, " +
+		"address VARCHAR(400) NOT NULL, " +
 		"phone VARCHAR(300) NOT NULL, " +
 		"military_dep BOOLEAN NOT NULL, " +
 		"dormitary BOOLEAN NOT NULL" +
@@ -61,13 +61,13 @@ func updateUnisInDb(db *sql.DB, unis []*University) error {
 		valueArgs = append(valueArgs, uni.Description)
 		valueArgs = append(valueArgs, uni.Site)
 		valueArgs = append(valueArgs, uni.Email)
-		valueArgs = append(valueArgs, uni.Adress)
+		valueArgs = append(valueArgs, uni.Address)
 		valueArgs = append(valueArgs, uni.Phone)
 		valueArgs = append(valueArgs, uni.MilitaryDep)
 		valueArgs = append(valueArgs, uni.Dormitary)
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO temp_university (university_id, name, description, site, email, adress, phone, military_dep, dormitary) VALUES %s;", strings.Join(valueStrings, ","))
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_university (university_id, name, description, site, email, address, phone, military_dep, dormitary) VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
 		return err
 	}
@@ -77,14 +77,14 @@ func updateUnisInDb(db *sql.DB, unis []*University) error {
 		return err
 	}
 
-	updateUnisQuery := "INSERT INTO university (university_id, name, description, site, email, adress, phone, military_dep, dormitary) " +
+	updateUnisQuery := "INSERT INTO university (university_id, name, description, site, email, address, phone, military_dep, dormitary) " +
 		"SELECT * FROM temp_university " +
 		"ON CONFLICT (university_id) DO UPDATE " +
 		"SET name = EXCLUDED.name, " +
 		"description = EXCLUDED.description, " +
 		"site = EXCLUDED.site, " +
 		"email = EXCLUDED.email, " +
-		"adress = EXCLUDED.adress, " +
+		"address = EXCLUDED.address, " +
 		"phone = EXCLUDED.phone, " +
 		"military_dep = EXCLUDED.military_dep, " +
 		"dormitary = EXCLUDED.dormitary;"
@@ -262,7 +262,7 @@ func updateFacsInDb(db *sql.DB, facs []*Faculty) error {
 		"description TEXT NOT NULL, " +
 		"site VARCHAR(200) NOT NULL, " +
 		"email VARCHAR(254) NOT NULL, " +
-		"adress VARCHAR(400) NOT NULL, " +
+		"address VARCHAR(400) NOT NULL, " +
 		"phone VARCHAR(300) NOT NULL, " +
 		"university_id INT NOT NULL" +
 		");"
@@ -279,7 +279,7 @@ func updateFacsInDb(db *sql.DB, facs []*Faculty) error {
 		valueArgs = append(valueArgs, fac.Description)
 		valueArgs = append(valueArgs, fac.Site)
 		valueArgs = append(valueArgs, fac.Email)
-		valueArgs = append(valueArgs, fac.Adress)
+		valueArgs = append(valueArgs, fac.Address)
 		valueArgs = append(valueArgs, fac.Phone)
 		valueArgs = append(valueArgs, fac.UniversityId)
 	}
@@ -301,7 +301,7 @@ func updateFacsInDb(db *sql.DB, facs []*Faculty) error {
 		"description = EXCLUDED.description, " +
 		"site = EXCLUDED.site, " +
 		"email = EXCLUDED.email, " +
-		"adress = EXCLUDED.adress, " +
+		"address = EXCLUDED.address, " +
 		"university_id = EXCLUDED.university_id;"
 	if _, err := tx.Exec(updateFacsQuery); err != nil {
 		tx.Rollback()
@@ -871,7 +871,7 @@ func getUnisQSPageFromDb(db *sql.DB, offset string) ([]*UniversityQS, error) {
 
 func getUniFromDb(db *sql.DB, uniId string) (*University, error) {
 	uni := &University{}
-	err := db.QueryRow("SELECT university_id, name, description, site, email, adress, phone, military_dep, dormitary FROM university WHERE university_id = " + uniId + ";").Scan(&uni.UniversityId, &uni.Name, &uni.Description, &uni.Site, &uni.Email, &uni.Adress, &uni.Phone, &uni.MilitaryDep, &uni.Dormitary)
+	err := db.QueryRow("SELECT university_id, name, description, site, email, address, phone, military_dep, dormitary FROM university WHERE university_id = " + uniId + ";").Scan(&uni.UniversityId, &uni.Name, &uni.Description, &uni.Site, &uni.Email, &uni.Address, &uni.Phone, &uni.MilitaryDep, &uni.Dormitary)
 	if err != nil {
 		return nil, err
 	}
@@ -934,7 +934,7 @@ func getFacsPageFromDb(db *sql.DB, uniId string, offset string) ([]*Faculty, err
 
 func getFacFromDb(db *sql.DB, facId string) (*Faculty, error) {
 	fac := &Faculty{}
-	err := db.QueryRow("SELECT * FROM faculty WHERE faculty_id = " + facId + ";").Scan(&fac.FacultyId, &fac.Name, &fac.Description, &fac.Site, &fac.Email, &fac.Adress, &fac.Phone, &fac.UniversityId)
+	err := db.QueryRow("SELECT * FROM faculty WHERE faculty_id = " + facId + ";").Scan(&fac.FacultyId, &fac.Name, &fac.Description, &fac.Site, &fac.Email, &fac.Address, &fac.Phone, &fac.UniversityId)
 	if err != nil {
 		return nil, err
 	}

@@ -20,7 +20,7 @@ type University struct {
 	Description string
 	Site string
 	Email string
-	Adress string
+	Address string
 	Phone string
 	MilitaryDep bool
 	Dormitary bool
@@ -32,7 +32,7 @@ type Faculty struct {
 	Description string
 	Site string
 	Email string
-	Adress string
+	Address string
 	Phone string
 	UniversityId int
 }

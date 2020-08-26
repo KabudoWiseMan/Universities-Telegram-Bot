@@ -9,13 +9,13 @@ import (
 func uniIsWrong(uni *University) bool {
 	return uni == nil ||
 		uni.Name == "" && uni.Description == "" ||
-		uni.Site == "" && uni.Email == "" && uni.Adress == "" && uni.Phone == ""
+		uni.Site == "" && uni.Email == "" && uni.Address == "" && uni.Phone == ""
 }
 
 func facIsWrong(fac *Faculty) bool {
 	return fac == nil ||
 		fac.Name == "" && fac.Description == "" ||
-		fac.Site == "" && fac.Email == "" && fac.Adress == "" && fac.Phone == ""
+		fac.Site == "" && fac.Email == "" && fac.Address == "" && fac.Phone == ""
 }
 
 func progIsWrong(prog *Program) bool {

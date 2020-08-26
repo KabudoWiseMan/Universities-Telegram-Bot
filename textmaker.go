@@ -54,8 +54,8 @@ func makeTextUni(uni *University, ratingQS string) string {
 	if uni.Email != "" {
 		res += "\n\n*E-mail:* " + strings.ReplaceAll(uni.Email, "_", "\\_")
 	}
-	if uni.Adress != "" {
-		res += "\n\n*Адрес:* " + uni.Adress
+	if uni.Address != "" {
+		res += "\n\n*Адрес:* " + uni.Address
 	}
 
 	res += "\n\n*Военная кафедра:* "
@@ -107,8 +107,8 @@ func makeTextFac(fac *Faculty) string {
 	if fac.Email != "" {
 		res += "\n\n*E-mail:* " + strings.ReplaceAll(fac.Email, "_", "\\_")
 	}
-	if fac.Adress != "" {
-		res += "\n\n*Адрес:* " + fac.Adress
+	if fac.Address != "" {
+		res += "\n\n*Адрес:* " + fac.Address
 	}
 
 	return res
