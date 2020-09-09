@@ -220,6 +220,62 @@ func main() {
 						msg.Text = "Добро пожаловать в бота для подбора университета!\n\n" +
 							"Здесь вы можете узнать, какие университеты подходят вам, исходя из ваших баллов ЕГЭ и других запросов."
 						msg.ReplyMarkup = mainMenu
+					case "update":
+						if isAdmin(chatID) {
+							msg.Text = "Обновление началось"
+							go updateDb()
+						} else {
+							msg.Text = "У меня нет такой команды"
+						}
+					case "updateU":
+						if isAdmin(chatID) {
+							msg.Text = "Обновление университетов началось"
+							go updateUnis()
+						} else {
+							msg.Text = "У меня нет такой команды"
+						}
+					case "updateF":
+						if isAdmin(chatID) {
+							msg.Text = "Обновление факультетов началось"
+							go updateFacs()
+						} else {
+							msg.Text = "У меня нет такой команды"
+						}
+					case "updateP":
+						if isAdmin(chatID) {
+							msg.Text = "Обновление программ началось"
+							go updateProgsNInfo()
+						} else {
+							msg.Text = "У меня нет такой команды"
+						}
+					case "updateC":
+						if isAdmin(chatID) {
+							msg.Text = "Обновление городов началось"
+							go updateCities()
+						} else {
+							msg.Text = "У меня нет такой команды"
+						}
+					case "updateS":
+						if isAdmin(chatID) {
+							msg.Text = "Обновление предметов началось"
+							go updateSubjs()
+						} else {
+							msg.Text = "У меня нет такой команды"
+						}
+					case "updatePS":
+						if isAdmin(chatID) {
+							msg.Text = "Обновление профилей и специальностей началось"
+							go updateProfsNSpecs()
+						} else {
+							msg.Text = "У меня нет такой команды"
+						}
+					case "updateR":
+						if isAdmin(chatID) {
+							msg.Text = "Обновление рейтинга QS началось"
+							go updateRatingQS()
+						} else {
+							msg.Text = "У меня нет такой команды"
+						}
 					default:
 						msg.Text = "У меня нет такой команды"
 					}
