@@ -44,6 +44,7 @@ func updateUnisInDb(db *sql.DB, unis []*University) error {
 		"site VARCHAR(200) NOT NULL, " +
 		"email VARCHAR(254) NOT NULL, " +
 		"address VARCHAR(400) NOT NULL, " +
+		"city_id SMALLINT NULL, " +
 		"phone VARCHAR(300) NOT NULL, " +
 		"military_dep BOOLEAN NOT NULL, " +
 		"dormitary BOOLEAN NOT NULL" +
@@ -55,19 +56,20 @@ func updateUnisInDb(db *sql.DB, unis []*University) error {
 	var valueStrings []string
 	var valueArgs []interface{}
 	for i, uni := range unis {
-		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i * 9 + 1, i * 9 + 2, i * 9 + 3, i * 9 + 4, i * 9 + 5, i * 9 + 6, i * 9 + 7, i * 9 + 8, i * 9 + 9))
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i * 10 + 1, i * 10 + 2, i * 10 + 3, i * 10 + 4, i * 10 + 5, i * 10 + 6, i * 10 + 7, i * 10 + 8, i * 10 + 9, i * 10 + 10))
 		valueArgs = append(valueArgs, uni.UniversityId)
 		valueArgs = append(valueArgs, uni.Name)
 		valueArgs = append(valueArgs, uni.Description)
 		valueArgs = append(valueArgs, uni.Site)
 		valueArgs = append(valueArgs, uni.Email)
 		valueArgs = append(valueArgs, uni.Address)
+		valueArgs = append(valueArgs, uni.CityId)
 		valueArgs = append(valueArgs, uni.Phone)
 		valueArgs = append(valueArgs, uni.MilitaryDep)
 		valueArgs = append(valueArgs, uni.Dormitary)
 	}
 
-	sqlStmt := fmt.Sprintf("INSERT INTO temp_university (university_id, name, description, site, email, address, phone, military_dep, dormitary) VALUES %s;", strings.Join(valueStrings, ","))
+	sqlStmt := fmt.Sprintf("INSERT INTO temp_university VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
 		return err
 	}
@@ -77,7 +79,7 @@ func updateUnisInDb(db *sql.DB, unis []*University) error {
 		return err
 	}
 
-	updateUnisQuery := "INSERT INTO university (university_id, name, description, site, email, address, phone, military_dep, dormitary) " +
+	updateUnisQuery := "INSERT INTO university " +
 		"SELECT * FROM temp_university " +
 		"ON CONFLICT (university_id) DO UPDATE " +
 		"SET name = EXCLUDED.name, " +
@@ -85,6 +87,7 @@ func updateUnisInDb(db *sql.DB, unis []*University) error {
 		"site = EXCLUDED.site, " +
 		"email = EXCLUDED.email, " +
 		"address = EXCLUDED.address, " +
+		"city_id = EXCLUDED.city_id, " +
 		"phone = EXCLUDED.phone, " +
 		"military_dep = EXCLUDED.military_dep, " +
 		"dormitary = EXCLUDED.dormitary;"
@@ -200,8 +203,8 @@ func updateProfsNSpecsInDb(db *sql.DB, profs []*Profile, specs []*Speciality) er
 	return nil
 }
 
-func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) ([]*University, error) {
-	var unis []*University
+func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) ([]*UniversityInfo, error) {
+	var unis []*UniversityInfo
 	if withNames {
 		rows, err := db.Query("SELECT university_id, name FROM university;")
 		if err != nil {
@@ -217,7 +220,7 @@ func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) ([]*University, error) {
 				return nil, err
 			}
 
-			uni := &University{
+			uni := &UniversityInfo{
 				UniversityId: university_id,
 				Name: name,
 			}
@@ -241,7 +244,7 @@ func getUnisIdsNamesFromDb(db *sql.DB, withNames bool) ([]*University, error) {
 				return nil, err
 			}
 
-			uni := &University{
+			uni := &UniversityInfo{
 				UniversityId: university_id,
 			}
 			unis = append(unis, uni)
@@ -869,9 +872,12 @@ func getUnisQSPageFromDb(db *sql.DB, offset string) ([]*UniversityQS, error) {
 	return universitiesQS, nil
 }
 
-func getUniFromDb(db *sql.DB, uniId string) (*University, error) {
-	uni := &University{}
-	err := db.QueryRow("SELECT university_id, name, description, site, email, address, phone, military_dep, dormitary FROM university WHERE university_id = " + uniId + ";").Scan(&uni.UniversityId, &uni.Name, &uni.Description, &uni.Site, &uni.Email, &uni.Address, &uni.Phone, &uni.MilitaryDep, &uni.Dormitary)
+func getUniFromDb(db *sql.DB, uniId string) (*UniversityInfo, error) {
+	uni := &UniversityInfo{}
+	query := "SELECT u.university_id, u.name, u.description, u.site, u.email, COALESCE('г. ' || c.name || ', ' || u.address, u.address), u.phone, u.military_dep, u.dormitary FROM university u " +
+		"LEFT JOIN city c on c.city_id = u.city_id " +
+		"WHERE university_id = " + uniId + ";"
+	err := db.QueryRow(query).Scan(&uni.UniversityId, &uni.Name, &uni.Description, &uni.Site, &uni.Email, &uni.Address, &uni.Phone, &uni.MilitaryDep, &uni.Dormitary)
 	if err != nil {
 		return nil, err
 	}
@@ -946,14 +952,14 @@ func getFindUnisNumFromDb(db *sql.DB, query string) (int, error) {
 	return getCountFromDb(db, "university_name_descr_vector WHERE name_descr_vector @@ plainto_tsquery('" + query + "')")
 }
 
-func getUnisIdsNNamesFromDb(db *sql.DB, query string) ([]*University, error) {
+func getUnisIdsNNamesFromDb(db *sql.DB, query string) ([]*UniversityInfo, error) {
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var unis []*University
+	var unis []*UniversityInfo
 	for rows.Next() {
 		var university_id int
 		var name string
@@ -962,7 +968,7 @@ func getUnisIdsNNamesFromDb(db *sql.DB, query string) ([]*University, error) {
 			return nil, err
 		}
 
-		uni := &University{
+		uni := &UniversityInfo{
 			UniversityId: university_id,
 			Name: name,
 		}
@@ -977,7 +983,7 @@ func getUnisIdsNNamesFromDb(db *sql.DB, query string) ([]*University, error) {
 	return unis, nil
 }
 
-func findUnisInDb(db *sql.DB, query string, offset string) ([]*University, error) {
+func findUnisInDb(db *sql.DB, query string, offset string) ([]*UniversityInfo, error) {
 	dbQuery := "SELECT u.university_id, u.name FROM university u " +
 		"JOIN (" +
 		"SELECT university_id, ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) " +
@@ -1293,8 +1299,8 @@ func getProgInfoFromDb(db *sql.DB, progId string) (*ProgramInfo, error) {
 	return prog, nil
 }
 
-func getUniOfFacFromDb(db *sql.DB, facId string) (*University, error) {
-	uni := &University{}
+func getUniOfFacFromDb(db *sql.DB, facId string) (*UniversityInfo, error) {
+	uni := &UniversityInfo{}
 	err := db.QueryRow("SELECT u.university_id, u.name FROM university u JOIN faculty f ON (u.university_id = f.university_id) WHERE faculty_id = " + facId + ";").Scan(&uni.UniversityId, &uni.Name)
 	if err != nil {
 		return nil, err
@@ -1306,6 +1312,37 @@ func getUniOfFacFromDb(db *sql.DB, facId string) (*University, error) {
 func getCitiesNumFromDb(db *sql.DB) (int, error) {
 	from := "city"
 	return getCountFromDb(db, from)
+}
+
+func getAllCitiesFromDb(db *sql.DB) ([]*City, error) {
+	rows, err := db.Query("SELECT * FROM city;")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var cities []*City
+	for rows.Next() {
+		var city_id int
+		var name string
+		err := rows.Scan(&city_id, &name)
+		if err != nil {
+			return nil, err
+		}
+
+		city := &City{
+			CityId: city_id,
+			Name: name,
+		}
+
+		cities = append(cities, city)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return cities, nil
 }
 
 func getCitiesFromDb(db *sql.DB, offset string) ([]*City, error) {
@@ -1550,7 +1587,7 @@ func getSearchUnisNumFromDb(db *sql.DB, from string) (int, error) {
 	return getCountFromDb(db, "(" + from + ") l")
 }
 
-func searchUnisInDb(db *sql.DB, innerQuery string, offset string) ([]*University, error) {
+func searchUnisInDb(db *sql.DB, innerQuery string, offset string) ([]*UniversityInfo, error) {
 	query := "SELECT u.university_id, u.name FROM university u " +
 		"JOIN (" + innerQuery +
 		") l ON (u.university_id = l.university_id) " +

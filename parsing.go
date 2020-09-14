@@ -10,6 +10,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -226,7 +227,7 @@ func searchUnisNum(node *html.Node) int {
 	return -1
 }
 
-func parseUniversities() []*University {
+func parseUniversities(cities []*City) []*University {
 	log.Println("parsing universities")
 
 	unisNum := findUnisNum()
@@ -242,7 +243,7 @@ func parseUniversities() []*University {
 	for i := 1; i <= unisPageNums; i += pace + 1 {
 		for j := i; j <= i + pace; j++ {
 			wg.Add(1)
-			go func(j int) { unis = append(unis, parsePage(&wg, UniversitiesSite + pageString + strconv.Itoa(j))...) }(j)
+			go func(j int) { unis = append(unis, parsePage(&wg, UniversitiesSite + pageString + strconv.Itoa(j), cities)...) }(j)
 		}
 		wg.Wait()
 	}
@@ -250,7 +251,7 @@ func parseUniversities() []*University {
 	return unis
 }
 
-func parsePage(wg *sync.WaitGroup, pageUrl string) []*University {
+func parsePage(wg *sync.WaitGroup, pageUrl string, cities []*City) []*University {
 	defer wg.Done()
 
 	log.Println("sending request to " + pageUrl)
@@ -265,7 +266,7 @@ func parsePage(wg *sync.WaitGroup, pageUrl string) []*University {
 				log.Println("invalid HTML from " + pageUrl, "error", err)
 			} else {
 				log.Println("HTML from " + pageUrl + " parsed successfully")
-				return searchUniversities(doc)
+				return searchUniversities(doc, cities)
 			}
 		}
 	}
@@ -273,7 +274,7 @@ func parsePage(wg *sync.WaitGroup, pageUrl string) []*University {
 	return nil
 }
 
-func searchUniversities(node *html.Node) []*University {
+func searchUniversities(node *html.Node, cities []*City) []*University {
 	universitiesMainUrl := UniversitiesSite[:20]
 
 	if isDiv(node, "sideContent") {
@@ -289,7 +290,7 @@ func searchUniversities(node *html.Node) []*University {
 									if isElem(csss, "a") {
 										uniSite := universitiesMainUrl + getAttr(csss, "href")
 										wg.Add(1)
-										go func(uniSite string) { uni := parseUniversity(&wg, uniSite); unis = append(unis, uni) }(uniSite)
+										go func(uniSite string) { uni := parseUniversity(&wg, uniSite, cities); unis = append(unis, uni) }(uniSite)
 									}
 								}
 							}
@@ -305,7 +306,7 @@ func searchUniversities(node *html.Node) []*University {
 	}
 
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		if unis := searchUniversities(c); unis != nil {
+		if unis := searchUniversities(c, cities); unis != nil {
 			return unis
 		}
 	}
@@ -313,7 +314,7 @@ func searchUniversities(node *html.Node) []*University {
 	return nil
 }
 
-func parseUniversity(wg *sync.WaitGroup, uniSite string) *University {
+func parseUniversity(wg *sync.WaitGroup, uniSite string, cities []*City) *University {
 	defer wg.Done()
 
 	log.Println("sending request to " + uniSite)
@@ -328,7 +329,7 @@ func parseUniversity(wg *sync.WaitGroup, uniSite string) *University {
 				log.Println("invalid HTML from " + uniSite, "error", err)
 			} else {
 				log.Println("HTML from " + uniSite + " parsed successfully")
-				return searchUniversity(doc, uniSite)
+				return searchUniversity(doc, uniSite, cities)
 			}
 		}
 	}
@@ -336,7 +337,29 @@ func parseUniversity(wg *sync.WaitGroup, uniSite string) *University {
 	return nil
 }
 
-func searchUniversity(node *html.Node, uniSite string) *University {
+func addressToCityAndRest(address string, cities []*City) (int64, string) {
+	if len(address) == 0 {
+		return 0, ""
+	}
+
+	var foundCity *City
+	for _, city := range cities {
+		if strings.Contains(address, city.Name) {
+			foundCity = city
+			break
+		}
+	}
+	if foundCity == nil {
+		return 0, address
+	}
+
+	re := regexp.MustCompile("\\(|\\)|(г\\.\\s*)?" + foundCity.Name + "\\s*,?\\s+")
+	newAddr := re.ReplaceAllString(address, "")
+
+	return int64(foundCity.CityId), newAddr
+}
+
+func searchUniversity(node *html.Node, uniSite string, cities []*City) *University {
 	if isDiv(node, "content clearfix") {
 		cs := getChildren(node)
 		universityId, err := strconv.Atoi(uniSite[25:])
@@ -355,13 +378,16 @@ func searchUniversity(node *html.Node, uniSite string) *University {
 
 		name, dormitary, militaryDep, description := searchUniOrFacInfo(cs[mainBlockIdx])
 		phone, address, email, site, _ := searchUniOrFacInfo2(cs[wrapIdx])
+		cityId, newAddress := addressToCityAndRest(address, cities)
+		valid := cityId != 0
 		uni := &University{
 			UniversityId: universityId,
 			Name: name,
 			Description: description,
 			Site: site,
 			Email: email,
-			Address: address,
+			Address: newAddress,
+			CityId: sql.NullInt64{cityId, valid},
 			Phone: phone,
 			MilitaryDep: militaryDep,
 			Dormitary: dormitary,
@@ -371,7 +397,7 @@ func searchUniversity(node *html.Node, uniSite string) *University {
 	}
 
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		if uni := searchUniversity(c, uniSite); uni != nil {
+		if uni := searchUniversity(c, uniSite, cities); uni != nil {
 			return uni
 		}
 	}
@@ -483,7 +509,7 @@ func searchUniOrFacInfo2(node *html.Node) (string, string, string, string, bool)
 	return "", "", "", "", false
 }
 
-func parseFaculties(unis []*University) []*Faculty {
+func parseFaculties(unis []*UniversityInfo) []*Faculty {
 	var wg sync.WaitGroup
 
 	var facs []*Faculty
@@ -1437,5 +1463,3 @@ func searchCities(node *html.Node) map[int]string {
 
 	return nil
 }
-
-

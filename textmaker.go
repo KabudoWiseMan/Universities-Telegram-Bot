@@ -18,7 +18,7 @@ func makeTextUnisQS(unisQS []*UniversityQS) string {
 	}
 }
 
-func makeTextUnis(unis []*University) string {
+func makeTextUnis(unis []*UniversityInfo) string {
 	var res string
 	for _, uni := range unis {
 		res += uni.Name + "\n\n"
@@ -31,7 +31,7 @@ func makeTextUnis(unis []*University) string {
 	}
 }
 
-func makeTextUni(uni *University, ratingQS string) string {
+func makeTextUni(uni *UniversityInfo, ratingQS string) string {
 	res := "*" + uni.Name + "*"
 	if uni.Description != "" {
 		descriptionForMarkdown := strings.ReplaceAll(uni.Description, "*", "")

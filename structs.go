@@ -1,6 +1,9 @@
 package main
 
-import uuid "github.com/satori/go.uuid"
+import (
+	"database/sql"
+	uuid "github.com/satori/go.uuid"
+)
 
 type Profile struct {
 	ProfileId int
@@ -15,6 +18,19 @@ type Speciality struct {
 }
 
 type University struct {
+	UniversityId int
+	Name string
+	Description string
+	Site string
+	Email string
+	Address string
+	CityId sql.NullInt64
+	Phone string
+	MilitaryDep bool
+	Dormitary bool
+}
+
+type UniversityInfo struct {
 	UniversityId int
 	Name string
 	Description string

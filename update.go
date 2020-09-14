@@ -61,8 +61,14 @@ func specIsWrong(spec *Speciality) bool {
 }
 
 func parseAndUpdateUnis(db *sql.DB) error {
+	cities, err := getAllCitiesFromDb(db)
+	if err != nil {
+		log.Println("couldn't get cities from db for update universities, error:", err)
+		return err
+	}
+
 	log.Println("Parsing universities started")
-	unis := parseUniversities()
+	unis := parseUniversities(cities)
 	if len(unis) == 0 || uniIsWrong(unis[0]) {
 		log.Println("Parsing universities failed")
 		return errors.New("error")
@@ -91,7 +97,6 @@ func updateUnis() {
 }
 
 func parseAndUpdateFacs(db *sql.DB) error {
-	var unis []*University
 	unis, err := getUnisIdsNamesFromDb(db, false)
 	if err != nil {
 		log.Println("couldn't get universities from db for update faculties, error:", err)
@@ -128,7 +133,6 @@ func updateFacs() {
 }
 
 func parseAndUpdateProgsNInfo(db *sql.DB) error {
-	var facs []*Faculty
 	facs, err := getFacsIdsFromDb(db)
 	if err != nil {
 		log.Println("couldn't get faculties from db for update programs, error:", err)

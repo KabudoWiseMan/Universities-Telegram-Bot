@@ -108,7 +108,7 @@ func makeRatingQsMenu(unisQSNum int, unisQS []*UniversityQS, curPage string) tgb
 	return ratingQSFullMenu
 }
 
-func makeUniMenu(uni *University, page string) tgbotapi.InlineKeyboardMarkup {
+func makeUniMenu(uni *UniversityInfo, page string) tgbotapi.InlineKeyboardMarkup {
 	var fullButtons [][]tgbotapi.InlineKeyboardButton
 	if uni.Site != "" && !strings.Contains(uni.Site, " ") {
 		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonURL("Перейти на сайт ВУЗа", uni.Site)))
@@ -178,7 +178,7 @@ func makeFacMenu(fac *Faculty, pages []string) tgbotapi.InlineKeyboardMarkup {
 	return uniFullMenu
 }
 
-func makeUnisMenu(unisNum int, unis []*University, pagesPattern string, backPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
+func makeUnisMenu(unisNum int, unis []*UniversityInfo, pagesPattern string, backPattern string, curPage string) tgbotapi.InlineKeyboardMarkup {
 	var unisButtons [][]tgbotapi.InlineKeyboardButton
 	for _, uni := range unis {
 		unisButtons = append(unisButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(uni.Name, "getUni&" + strconv.Itoa(uni.UniversityId) + "#" + curPage)))
