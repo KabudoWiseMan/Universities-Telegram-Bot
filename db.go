@@ -949,7 +949,7 @@ func getFacFromDb(db *sql.DB, facId string) (*Faculty, error) {
 }
 
 func getFindUnisNumFromDb(db *sql.DB, query string) (int, error) {
-	return getCountFromDb(db, "university_name_descr_vector WHERE name_descr_vector @@ plainto_tsquery('" + query + "')")
+	return getCountFromDb(db, "university_name_descr_vector WHERE name_descr_vector @@ plainto_tsquery('russian', '" + query + "')")
 }
 
 func getUnisIdsNNamesFromDb(db *sql.DB, query string) ([]*UniversityInfo, error) {
@@ -986,10 +986,10 @@ func getUnisIdsNNamesFromDb(db *sql.DB, query string) ([]*UniversityInfo, error)
 func findUnisInDb(db *sql.DB, query string, offset string) ([]*UniversityInfo, error) {
 	dbQuery := "SELECT u.university_id, u.name FROM university u " +
 		"JOIN (" +
-		"SELECT university_id, ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) " +
+		"SELECT university_id, ts_rank(name_descr_vector, plainto_tsquery('russian', '" + query + "')) " +
 		"FROM university_name_descr_vector " +
-		"WHERE name_descr_vector @@ plainto_tsquery('" + query + "') " +
-		"ORDER BY ts_rank(name_descr_vector, plainto_tsquery('" + query + "')) DESC " +
+		"WHERE name_descr_vector @@ plainto_tsquery('russian', '" + query + "') " +
+		"ORDER BY ts_rank(name_descr_vector, plainto_tsquery('russian', '" + query + "')) DESC " +
 		"LIMIT 5 OFFSET " + offset +
 		") l ON (u.university_id = l.university_id);"
 
