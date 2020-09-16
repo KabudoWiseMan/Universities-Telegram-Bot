@@ -243,7 +243,7 @@ func parseUniversities(cities []*City) []*University {
 	for i := 1; i <= unisPageNums; i += pace + 1 {
 		for j := i; j <= i + pace; j++ {
 			wg.Add(1)
-			go func(j int) { unis = append(unis, parsePage(&wg, UniversitiesSite + pageString + strconv.Itoa(j), cities)...) }(j)
+			go func(j int) { unis = append(unis, parseUniversityPage(&wg, UniversitiesSite + pageString + strconv.Itoa(j), cities)...) }(j)
 		}
 		wg.Wait()
 	}
@@ -251,7 +251,7 @@ func parseUniversities(cities []*City) []*University {
 	return unis
 }
 
-func parsePage(wg *sync.WaitGroup, pageUrl string, cities []*City) []*University {
+func parseUniversityPage(wg *sync.WaitGroup, pageUrl string, cities []*City) []*University {
 	defer wg.Done()
 
 	log.Println("sending request to " + pageUrl)
