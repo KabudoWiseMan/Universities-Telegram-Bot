@@ -113,7 +113,7 @@ func googleWikiSearch(query string) string {
 		log.Fatal(err)
 	}
 
-	request := "https://www.google.com/search?q=" + queryUrl + "&num=10"
+	request := "https://www.google.com/search?q=" + queryUrl + "&num=20"
 
 	if response, err := http.Get(request); err != nil {
 		log.Println("request to " + request + " failed", "error: ", err)

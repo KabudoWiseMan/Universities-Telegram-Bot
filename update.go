@@ -277,9 +277,15 @@ func updateSubjs() {
 }
 
 func parseAndUpdateRatingQS(db *sql.DB) error {
+	unis, err := getUnisWithSitesFromDb(db)
+	if err != nil {
+		log.Println("couldn't get universities from db for update rating QS, error:", err)
+		return err
+	}
+
 	log.Println("Parsing rating QS started")
-	ratingQS := parseRatingQS(db)
-	if len(ratingQS) == 0 || ratingQsIsWrong(ratingQS[0])  {
+	ratingQS := parseRatingQS(unis)
+	if len(ratingQS) == 0 || ratingQsIsWrong(ratingQS[0]) {
 		log.Println("Parsing rating QS failed")
 		return errors.New("error")
 	}

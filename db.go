@@ -667,45 +667,35 @@ func getSpecsIdsFromDb(db *sql.DB) ([]*Speciality, error) {
 	return specs, nil
 }
 
-func getUniIdFromDb(db *sql.DB, uniSite string) (int, error) {
-	rows, err := db.Query("SELECT university_id FROM university WHERE site LIKE" + "'%www." + uniSite + ".ru%' LIMIT 1;")
+func getUnisWithSitesFromDb(db *sql.DB) ([]*University, error) {
+	rows, err := db.Query("SELECT university_id, site FROM university;")
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	defer rows.Close()
 
-	var university_id int
+	var unis []*University
 	for rows.Next() {
-		err := rows.Scan(&university_id)
+		var university_id int
+		var site string
+		err := rows.Scan(&university_id, &site)
 		if err != nil {
-			return -1, err
+			return nil, err
 		}
+
+		uni := &University{
+			UniversityId: university_id,
+			Site: site,
+		}
+
+		unis = append(unis, uni)
 	}
 	err = rows.Err()
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
-	if university_id == 0 {
-		rows2, err := db.Query("SELECT university_id FROM university WHERE site LIKE" + "'%" + uniSite + ".ru%' LIMIT 1;")
-		if err != nil {
-			return -1, err
-		}
-		defer rows2.Close()
-
-		for rows2.Next() {
-			err := rows2.Scan(&university_id)
-			if err != nil {
-				return -1, err
-			}
-		}
-		err = rows2.Err()
-		if err != nil {
-			return -1, err
-		}
-	}
-
-	return university_id, nil
+	return unis, nil
 }
 
 func updateRatingQSInDb(db *sql.DB, ratingQS []*RatingQS) error {
@@ -729,6 +719,7 @@ func updateRatingQSInDb(db *sql.DB, ratingQS []*RatingQS) error {
 
 	sqlStmt := fmt.Sprintf("INSERT INTO temp_rating_qs VALUES %s;", strings.Join(valueStrings, ","))
 	if _, err := db.Exec(sqlStmt, valueArgs...); err != nil {
+		log.Println("fuck")
 		return err
 	}
 

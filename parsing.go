@@ -1251,7 +1251,7 @@ func searchProgInfo2(node *html.Node, programId uuid.UUID, subjs map[string]int)
 	return -1, "", "", "", "", "", nil, nil
 }
 
-func parseRatingQS(db *sql.DB) []*RatingQS {
+func parseRatingQS(unis []*University) []*RatingQS {
 	log.Println("sending request to " + RatingQsSite)
 	if response, err := http.Get(RatingQsSite); err != nil {
 		log.Println("request to " + RatingQsSite + " failed", "error: ", err)
@@ -1264,7 +1264,7 @@ func parseRatingQS(db *sql.DB) []*RatingQS {
 				log.Println("invalid HTML from " + RatingQsSite, "error", err)
 			} else {
 				log.Println("HTML from " + RatingQsSite + " parsed successfully")
-				return searchRatingQS(db, doc)
+				return searchRatingQS(unis, doc)
 			}
 		}
 	}
@@ -1272,7 +1272,7 @@ func parseRatingQS(db *sql.DB) []*RatingQS {
 	return nil
 }
 
-func searchRatingQS(db *sql.DB, node *html.Node) []*RatingQS {
+func searchRatingQS(unis []*University, node *html.Node) []*RatingQS {
 	if isDiv(node, "uni-list") {
 		mainQSSite := RatingQsSite[:31]
 		unisListString := ""
@@ -1288,11 +1288,11 @@ func searchRatingQS(db *sql.DB, node *html.Node) []*RatingQS {
 		if err != nil {
 			return nil
 		}
-		return parseRatingQSList(db, unisHtml)
+		return parseRatingQSList(unis, unisHtml)
 	}
 
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		if unisNames := searchRatingQS(db, c); unisNames != nil {
+		if unisNames := searchRatingQS(unis, c); unisNames != nil {
 			return unisNames
 		}
 	}
@@ -1302,10 +1302,11 @@ func searchRatingQS(db *sql.DB, node *html.Node) []*RatingQS {
 
 func parseRatingQSListWithChrome(unisListUrl string) (string, error) {
 	log.Println("sending request through Chrome to " + unisListUrl)
+
 	ctx, cancel := chromedp.NewContext(context.Background(), chromedp.WithLogf(log.Printf))
 	defer cancel()
 
-	ctx, cancel = context.WithTimeout(ctx, 15 * time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 1 * time.Minute)
 	defer cancel()
 
 	var f []byte
@@ -1314,7 +1315,7 @@ func parseRatingQSListWithChrome(unisListUrl string) (string, error) {
 		chromedp.Navigate(unisListUrl),
 		chromedp.SetValue(`select[name="qs-rankings_length"]`, "-1"),
 		chromedp.EvaluateAsDevTools(`$("select[name='qs-rankings_length']").change()`, &f),
-		chromedp.Sleep(time.Second * 2),
+		chromedp.WaitVisible(`table[id="qs-rankings"]`),
 		chromedp.OuterHTML(`table[id="qs-rankings"]`, &unisHtml),
 	)
 	if err != nil {
@@ -1327,18 +1328,40 @@ func parseRatingQSListWithChrome(unisListUrl string) (string, error) {
 	return unisHtml, nil
 }
 
-func parseRatingQSList(db *sql.DB, unisHtml string) []*RatingQS {
+func parseRatingQSList(unis []*University, unisHtml string) []*RatingQS {
 	if doc, err := html.Parse(strings.NewReader(unisHtml)); err != nil {
 		log.Println("invalid HTML, error", err)
 	} else {
 		log.Println("HTML parsed successfully")
-		return searchRatingQSList(db, doc)
+		return searchRatingQSList(unis, doc)
 	}
 
 	return nil
 }
 
-func searchRatingQSList(db *sql.DB, node *html.Node) []*RatingQS {
+func takeUniIdWithSite(unis []*University, uniSite string) int {
+	for _, uni := range unis {
+		if strings.Contains(uni.Site, "www." + uniSite + ".ru") {
+			return uni.UniversityId
+		}
+	}
+
+	for _, uni := range unis {
+		if strings.Contains(uni.Site, "//" + uniSite + ".ru") {
+			return uni.UniversityId
+		}
+	}
+
+	for _, uni := range unis {
+		if strings.Contains(uni.Site, uniSite + ".ru") {
+			return uni.UniversityId
+		}
+	}
+
+	return -1
+}
+
+func searchRatingQSList(unis []*University, node *html.Node) []*RatingQS {
 	if isElem(node, "tbody") {
 		var ratingQS []*RatingQS
 		var wg sync.WaitGroup
@@ -1380,8 +1403,11 @@ func searchRatingQSList(db *sql.DB, node *html.Node) []*RatingQS {
 					if uniSite == "" {
 						uniSite = googleWikiSearch(uniName + " wiki")
 					}
+					if uniSite == "" {
+						uniSite = googleWikiSearch(uniName + " wikipedia")
+					}
 
-					uniId, _ := getUniIdFromDb(db, uniSite)
+					uniId := takeUniIdWithSite(unis, uniSite)
 
 					uniRatingQS := &RatingQS{
 						UniversityId: uniId,
@@ -1400,7 +1426,7 @@ func searchRatingQSList(db *sql.DB, node *html.Node) []*RatingQS {
 	}
 
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		if ratingQS := searchRatingQSList(db, c); ratingQS != nil {
+		if ratingQS := searchRatingQSList(unis, c); ratingQS != nil {
 			return ratingQS
 		}
 	}
