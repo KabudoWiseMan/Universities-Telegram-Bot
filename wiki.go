@@ -21,7 +21,8 @@ func urlEncoded(str string) (string, error) {
 func wikiSearch(query string) string {
 	queryUrl, err := urlEncoded(query)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return ""
 	}
 	request := "https://en.wikipedia.org/w/api.php?action=opensearch&search=" + queryUrl + "&limit=1&origin=*&format=json"
 
@@ -32,12 +33,14 @@ func wikiSearch(query string) string {
 
 		contents, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			return ""
 		}
 
 		sr := []interface{}{}
 		if err = json.Unmarshal(contents, &sr); err != nil {
-			log.Fatal("Something going wrong, try to change your question")
+			log.Println("Something going wrong, try to change your question")
+			return ""
 		}
 
 		if len(sr[1].([]interface{})) > 0 {
@@ -110,7 +113,8 @@ func uniWikiSiteSearch(node *html.Node) string {
 func googleWikiSearch(query string) string {
 	queryUrl, err := urlEncoded(query)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return ""
 	}
 
 	request := "https://www.google.com/search?q=" + queryUrl + "&num=20"
@@ -141,7 +145,8 @@ func googleUniWikiSiteSearch(node *html.Node) string {
 		encodedUrl := strings.ReplaceAll(uniWikiUrl, "%25", "%")
 		decodedUrl, err := url.QueryUnescape(encodedUrl)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			return ""
 		}
 
 		uniSite := parseUniWikiUrl(decodedUrl)
