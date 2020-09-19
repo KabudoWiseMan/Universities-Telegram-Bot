@@ -40,6 +40,7 @@ func monitorUsers(ticker *time.Ticker, users *Users) {
 }
 
 func main() {
+	// подключение к боту
 	bot, err := tgbotapi.NewBotAPI(BotToken)
 	if err != nil {
 		log.Panic("couldn't connect to bot", err)
@@ -78,6 +79,7 @@ func main() {
 	for {
 		select {
 		case update := <- updates:
+			// обработка запроса к боту
 			if update.CallbackQuery != nil {
 				chatID := update.CallbackQuery.Message.Chat.ID
 				log.Printf("[%s u: %d c: %d] %s\n", update.CallbackQuery.From.UserName, update.CallbackQuery.From.ID, chatID, update.CallbackQuery.Data)

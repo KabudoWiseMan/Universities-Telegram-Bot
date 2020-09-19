@@ -818,7 +818,7 @@ func getUnisQSNumFromDb(db *sql.DB) (int, error) {
 	return getCountFromDb(db, "rating_qs")
 }
 
-func makeQSMark(db *sql.DB, high_mark int, low_mark int) string {
+func makeQSMark(high_mark int, low_mark int) string {
 	var mark string
 	if high_mark == low_mark {
 		mark = strconv.Itoa(high_mark)
