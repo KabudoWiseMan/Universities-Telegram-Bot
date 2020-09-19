@@ -329,7 +329,7 @@ func makeUnisCompilationMenu(user *UserInfo) tgbotapi.InlineKeyboardMarkup {
 		fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Сбросить всё", "clear&" + strconv.Itoa(UniState))))
 	}
 
-	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Поиск", "search#1")))
+	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Поиск" + makeEmoji(MagnifierEmoji), "search#1")))
 
 	fullButtons = append(fullButtons, tgbotapi.NewInlineKeyboardRow(mainButton))
 

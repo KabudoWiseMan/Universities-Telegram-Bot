@@ -11,6 +11,7 @@ const (
 	CryingEmoji = 128546
 	WinkEmoji = 128521
 	QuestionEmoji = 10067
+	MagnifierEmoji = 128270
 )
 
 func makeEmoji(i int) string {
