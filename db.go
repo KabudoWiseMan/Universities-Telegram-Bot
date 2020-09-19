@@ -845,7 +845,7 @@ func getUnisQSPageFromDb(db *sql.DB, offset string) ([]*UniversityQS, error) {
 			return nil, err
 		}
 
-		mark := makeQSMark(db, high_mark, low_mark)
+		mark := makeQSMark(high_mark, low_mark)
 
 		universityQs := &UniversityQS{
 			UniversityId: university_id,
@@ -887,7 +887,7 @@ func getUniQSRateFromDb(db *sql.DB, uniId string) (string, error) {
 		return "", nil
 	}
 
-	mark := makeQSMark(db, high_mark, low_mark)
+	mark := makeQSMark(high_mark, low_mark)
 
 	return mark, nil
 }
