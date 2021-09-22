@@ -87,6 +87,9 @@ func uniWikiSiteSearch(node *html.Node) string {
 		if strings.Contains(uniUrl, "phystech") {
 			uniUrl = "https://mipt.ru"
 		}
+		if strings.Contains(uniUrl, "fizteh") {
+			uniUrl = "http://urfu.ru"
+		}
 
 		splitted := strings.Split(uniUrl, ".")
 		if (len(splitted) > 1) {

@@ -4,6 +4,7 @@ import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -12,10 +13,9 @@ import (
 	"time"
 )
 
-// ***FOR WEBHOOK***
-//func MainHandler(resp http.ResponseWriter, _ *http.Request) {
-//	resp.Write([]byte("Hi there! I'm Choose University bot!"))
-//}
+func MainHandler(resp http.ResponseWriter, _ *http.Request) {
+	resp.Write([]byte("Hi there! I'm Choose University bot!"))
+}
 
 func isAdmin(chatID int64) bool {
 	return chatID == CreatorID
@@ -40,10 +40,9 @@ func monitorUsers(ticker *time.Ticker, users *Users) {
 }
 
 func main() {
-	// подключение к боту
 	bot, err := tgbotapi.NewBotAPI(BotToken)
 	if err != nil {
-		log.Panic("couldn't connect to bot", err)
+		log.Panic("couldn't connect to bot: ", err)
 	}
 	log.Printf("Authorized on account %s\n", bot.Self.UserName)
 
@@ -51,7 +50,7 @@ func main() {
 
 	db, err := connectToDb()
 	if err != nil {
-		log.Panic("couldn't connected to data base", err)
+		log.Panic("couldn't connect to data base: ", err)
 	}
 	log.Println("Successfully connected to data base")
 	defer closeDb(db)
@@ -59,14 +58,11 @@ func main() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	updates, err := bot.GetUpdatesChan(u)
-
-	// ***FOR WEBHOOK***
-	//updates := bot.ListenForWebhook("/" + bot.Token)
-	//http.HandleFunc("/", MainHandler)
-	//go func() {
-	//	panic(http.ListenAndServe(":" + os.Getenv("PORT"), nil))
-	//}()
+	updates := bot.ListenForWebhook("/" + bot.Token)
+	http.HandleFunc("/", MainHandler)
+	go func() {
+		panic(http.ListenAndServe(":" + os.Getenv("PORT"), nil))
+	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -79,7 +75,6 @@ func main() {
 	for {
 		select {
 		case update := <- updates:
-			// обработка запроса к боту
 			if update.CallbackQuery != nil {
 				chatID := update.CallbackQuery.Message.Chat.ID
 				log.Printf("[%s u: %d c: %d] %s\n", update.CallbackQuery.From.UserName, update.CallbackQuery.From.ID, chatID, update.CallbackQuery.Data)
@@ -212,6 +207,7 @@ func main() {
 				log.Printf("[%s u: %d c: %d] %s\n", update.Message.From.UserName, userID, chatID, update.Message.Text)
 
 				user := users.User(chatID)
+				user.LastSeen = time.Now()
 
 				msg := tgbotapi.NewMessage(chatID, "")
 				msg.ParseMode = "markdown"
@@ -283,8 +279,6 @@ func main() {
 					bot.Send(msg)
 					continue
 				}
-
-				user.LastSeen = time.Now()
 
 				if user.State == UniState {
 					msg.Text = "Что-то здесь не так, проверьте, что вы нажали нужную кнопку" + makeEmoji(WinkEmoji)

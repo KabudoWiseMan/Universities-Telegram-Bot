@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/chromedp/chromedp"
 	uuid "github.com/satori/go.uuid"
 	"golang.org/x/net/html"
@@ -1408,6 +1409,9 @@ func searchRatingQSList(unis []*University, node *html.Node) []*RatingQS {
 					}
 
 					uniId := takeUniIdWithSite(unis, uniSite)
+					if uniId == 625 {
+						fmt.Println("SITE:", uniSite, uniName)
+					}
 
 					uniRatingQS := &RatingQS{
 						UniversityId: uniId,
@@ -1489,3 +1493,7 @@ func searchCities(node *html.Node) map[int]string {
 
 	return nil
 }
+
+//func main() {
+//	updateRatingQS()
+//}

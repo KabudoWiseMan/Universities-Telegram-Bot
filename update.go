@@ -3,7 +3,9 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
+	"time"
 )
 
 func uniIsWrong(uni *University) bool {
@@ -68,7 +70,10 @@ func parseAndUpdateUnis(db *sql.DB) error {
 	}
 
 	log.Println("Parsing universities started")
+	startParse := time.Now()
 	unis := parseUniversities(cities)
+	stopParse := time.Since(startParse)
+	fmt.Println("Parsing time: ", stopParse)
 	if len(unis) == 0 || uniIsWrong(unis[0]) {
 		log.Println("Parsing universities failed")
 		return errors.New("error")
@@ -76,10 +81,13 @@ func parseAndUpdateUnis(db *sql.DB) error {
 	log.Println("Parsing universities finished")
 
 	log.Println("Updating universities started")
+	startUpdate := time.Now()
 	if err := updateUnisInDb(db, unis); err != nil {
 		log.Println("Updating universities failed with error:", err)
 		return err
 	}
+	stopUpdate := time.Since(startUpdate)
+	fmt.Println("Update time: ", stopUpdate)
 	log.Println("Updating universities finished")
 	return nil
 }
@@ -104,7 +112,10 @@ func parseAndUpdateFacs(db *sql.DB) error {
 	}
 
 	log.Println("Parsing faculties started")
+	startParse := time.Now()
 	facs := parseFaculties(unis)
+	stopParse := time.Since(startParse)
+	fmt.Println("Parsing time: ", stopParse)
 	if len(facs) == 0 || facIsWrong(facs[0]) {
 		log.Println("Parsing faculties failed")
 		return errors.New("error")
@@ -112,10 +123,13 @@ func parseAndUpdateFacs(db *sql.DB) error {
 	log.Println("Parsing faculties finished")
 
 	log.Println("Updating faculties started")
+	startUpdate := time.Now()
 	if err := updateFacsInDb(db, facs); err != nil {
 		log.Println("Updating faculties failed with error:", err)
 		return err
 	}
+	stopUpdate := time.Since(startUpdate)
+	fmt.Println("Update time: ", stopUpdate)
 	log.Println("Updating faculties finished")
 	return nil
 }
@@ -161,6 +175,7 @@ func parseAndUpdateProgsNInfo(db *sql.DB) error {
 	pace := 100
 
 	log.Println("Parsing and inserting programs started")
+	startParse := time.Now()
 	for i := 0; i < len(facs); i += pace {
 		to := i + pace
 		if to > len(facs) {
@@ -188,13 +203,18 @@ func parseAndUpdateProgsNInfo(db *sql.DB) error {
 		}
 		log.Println("Parsing and inserting programs of faculties from", i, "to", to, "finished")
 	}
+	stopParse := time.Since(startParse)
+	fmt.Println("Parsing time: ", stopParse)
 	log.Println("Parsing and inserting programs finished")
 
 	log.Println("Updating programs started")
+	startUpdate := time.Now()
 	if err := updateProgsNInfoInDb(db); err != nil {
 		log.Println("Updating programs failed with error:", err)
 		return err
 	}
+	stopUpdate := time.Since(startUpdate)
+	fmt.Println("Update time: ", stopUpdate)
 	log.Println("Updating programs finished")
 
 	return nil
@@ -214,7 +234,10 @@ func updateProgsNInfo() {
 
 func parseAndUpdateCities(db *sql.DB) error {
 	log.Println("Parsing cities started")
+	startParse := time.Now()
 	cities := parseCities()
+	stopParse := time.Since(startParse)
+	fmt.Println("Parsing time: ", stopParse)
 	if len(cities) == 0 || getElemFromMap(cities) == "" {
 		log.Println("Parsing cities failed")
 		return errors.New("error")
@@ -222,10 +245,13 @@ func parseAndUpdateCities(db *sql.DB) error {
 	log.Println("Parsing cities finished")
 
 	log.Println("Updating cities started")
+	startUpdate := time.Now()
 	if err := updateCitiesInDb(db, cities); err != nil {
 		log.Println("Updating cities failed with error:", err)
 		return err
 	}
+	stopUpdate := time.Since(startUpdate)
+	fmt.Println("Update time: ", stopUpdate)
 	log.Println("Updating cities finished")
 	return nil
 }
@@ -244,7 +270,10 @@ func updateCities() {
 
 func parseAndUpdateSubjs(db *sql.DB) error {
 	log.Println("Parsing subjects started")
+	startParse := time.Now()
 	subjs := parseSubjs()
+	stopParse := time.Since(startParse)
+	fmt.Println("Parsing time: ", stopParse)
 	if len(subjs) == 0 {
 		log.Println("Parsing subjects failed")
 		return errors.New("error")
@@ -256,10 +285,13 @@ func parseAndUpdateSubjs(db *sql.DB) error {
 	log.Println("Parsing subjects finished")
 
 	log.Println("Updating subjects started")
+	startUpdate := time.Now()
 	if err := updateSubjsInDb(db, subjs); err != nil {
 		log.Println("Updating subjects failed with error:", err)
 		return err
 	}
+	stopUpdate := time.Since(startUpdate)
+	fmt.Println("Update time: ", stopUpdate)
 	log.Println("Updating subjects finished")
 	return nil
 }
@@ -284,18 +316,28 @@ func parseAndUpdateRatingQS(db *sql.DB) error {
 	}
 
 	log.Println("Parsing rating QS started")
+	startParse := time.Now()
 	ratingQS := parseRatingQS(unis)
+	stopParse := time.Since(startParse)
+	fmt.Println("Parsing time: ", stopParse)
 	if len(ratingQS) == 0 || ratingQsIsWrong(ratingQS[0]) {
 		log.Println("Parsing rating QS failed")
 		return errors.New("error")
 	}
 	log.Println("Parsing rating QS finished")
 
+	for _, rate := range ratingQS {
+		fmt.Println(*rate)
+	}
+
 	log.Println("Updating rating QS started")
+	startUpdate := time.Now()
 	if err := updateRatingQSInDb(db, ratingQS); err != nil {
 		log.Println("Updating rating QS failed with error:", err)
 		return err
 	}
+	stopUpdate := time.Since(startUpdate)
+	fmt.Println("Update time: ", stopUpdate)
 	log.Println("Updating rating QS finished")
 	return nil
 }
@@ -314,8 +356,11 @@ func updateRatingQS() {
 
 func parseAndUpdateProfsNSpecs(db *sql.DB) error {
 	log.Println("Parsing profiles and specialities started")
+	startParse := time.Now()
 	profsBach, specs := parseProfsNSpecs(BachelorSpecialitiesSite)
 	profsSpec, specsSpec := parseProfsNSpecs(SpecialistSpecialitiesSite)
+	stopParse := time.Since(startParse)
+	fmt.Println("Parsing time: ", stopParse)
 
 	profsMap := make(map[Profile]bool)
 	for _, p := range profsBach {
@@ -347,10 +392,13 @@ func parseAndUpdateProfsNSpecs(db *sql.DB) error {
 	log.Println("Parsing profiles and specialities finished")
 
 	log.Println("Updating profiles and specialities started")
+	startUpdate := time.Now()
 	if err := updateProfsNSpecsInDb(db, profs, specs); err != nil {
 		log.Println("Updating profiles and specialities failed with error:", err)
 		return err
 	}
+	stopUpdate := time.Since(startUpdate)
+	fmt.Println("Update time: ", stopUpdate)
 	log.Println("Updating profiles and specialities finished")
 	return nil
 }
@@ -378,30 +426,37 @@ func updateDb() {
 
 	log.Println("Update started")
 
+	fmt.Println("CITIES:")
 	if err = parseAndUpdateCities(db); err != nil {
 		return
 	}
 
+	fmt.Println("UNIS:")
 	if err = parseAndUpdateUnis(db); err != nil {
 		return
 	}
 
+	fmt.Println("FACS:")
 	if err = parseAndUpdateFacs(db); err != nil {
 		return
 	}
 
+	fmt.Println("PROFS & SPECS:")
 	if err = parseAndUpdateProfsNSpecs(db); err != nil {
 		return
 	}
 
+	fmt.Println("SUBJS:")
 	if err = parseAndUpdateSubjs(db); err != nil {
 		return
 	}
 
+	fmt.Println("PROGS & Info:")
 	if err = parseAndUpdateProgsNInfo(db); err != nil {
 		return
 	}
 
+	fmt.Println("RATING:")
 	if err = parseAndUpdateRatingQS(db); err != nil {
 		return
 	}

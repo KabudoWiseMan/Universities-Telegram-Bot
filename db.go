@@ -12,7 +12,10 @@ import (
 	"strings"
 )
 
-var dbInfo = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", Host, Port, User, Password, DBname, SSLmode)
+var dbInfo = fmt.Sprintf(
+	"postgres://%s:%s@%s:%d/%s",
+	User, Password, Host, Port, DBname,
+)
 
 func connectToDb() (*sql.DB, error) {
 	db, err := sql.Open("postgres", dbInfo)
