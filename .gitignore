@@ -9,7 +9,7 @@
 *.test
 
 # Dependency directories
-# vendor/
+vendor/
 
 # Ignore idea
 .idea/*
